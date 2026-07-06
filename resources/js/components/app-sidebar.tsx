@@ -13,6 +13,7 @@ import {
     MonitorSmartphone,
     School,
     Settings,
+    Truck,
     Users,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
@@ -72,6 +73,12 @@ const adminNavItems: NavItem[] = [
         href: '/app/admin/equipment',
         icon: MonitorSmartphone,
         iconClassName: 'text-teal-600',
+    },
+    {
+        title: 'Distributions',
+        href: '/app/admin/distributions',
+        icon: Truck,
+        iconClassName: 'text-lime-600',
     },
     {
         title: 'Reports',
@@ -157,6 +164,12 @@ export function AppSidebar() {
             href: '/school/inventory',
             icon: Boxes,
             iconClassName: 'text-emerald-600',
+        },
+        {
+            title: 'Deliveries',
+            href: '/school/distributions',
+            icon: Truck,
+            iconClassName: 'text-lime-600',
         },
         {
             title: 'Equipment',
