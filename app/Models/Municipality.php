@@ -5,7 +5,6 @@ namespace App\Models;
 use Database\Factories\MunicipalityFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Municipality extends Model
@@ -13,11 +12,11 @@ class Municipality extends Model
     /** @use HasFactory<MunicipalityFactory> */
     use HasFactory;
 
-    protected $fillable = ['district_id', 'name'];
+    protected $fillable = ['name'];
 
-    public function district(): BelongsTo
+    public function districts(): HasMany
     {
-        return $this->belongsTo(District::class);
+        return $this->hasMany(District::class);
     }
 
     public function barangays(): HasMany

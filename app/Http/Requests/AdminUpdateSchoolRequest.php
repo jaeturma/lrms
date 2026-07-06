@@ -30,11 +30,12 @@ class AdminUpdateSchoolRequest extends FormRequest
         return [
             'school_id' => ['required', 'string', 'max:255', Rule::unique('schools', 'school_id')->ignore($school->id)],
             'school_name' => ['required', 'string', 'max:255'],
-            'district_id' => ['required', 'integer', Rule::exists('districts', 'id')],
-            'municipality_id' => [
+            'school_type' => ['required', 'string', Rule::in(School::SCHOOL_TYPES)],
+            'municipality_id' => ['required', 'integer', Rule::exists('municipalities', 'id')],
+            'district_id' => [
                 'required',
                 'integer',
-                Rule::exists('municipalities', 'id')->where('district_id', (int) $this->input('district_id')),
+                Rule::exists('districts', 'id')->where('municipality_id', (int) $this->input('municipality_id')),
             ],
             'barangay_id' => [
                 'nullable',
@@ -44,6 +45,8 @@ class AdminUpdateSchoolRequest extends FormRequest
             'school_head' => ['nullable', 'string', 'max:255'],
             'librarian' => ['nullable', 'string', 'max:255'],
             'property_custodian' => ['nullable', 'string', 'max:255'],
+            'primary_mobile_no' => ['nullable', 'string', 'max:30'],
+            'secondary_mobile_no' => ['nullable', 'string', 'max:30'],
             'email' => [
                 'nullable',
                 'email',
@@ -59,8 +62,8 @@ class AdminUpdateSchoolRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'district_id.exists' => 'Selected district is invalid.',
             'municipality_id.exists' => 'Selected municipality is invalid.',
+            'district_id.exists' => 'Selected district is invalid.',
             'barangay_id.exists' => 'Selected barangay is invalid.',
         ];
     }

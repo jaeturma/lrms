@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Models\District;
 use App\Models\Municipality;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -19,7 +18,6 @@ class MunicipalityFactory extends Factory
     public function definition(): array
     {
         return [
-            'district_id' => District::factory(),
             'name' => fake()->unique()->city(),
         ];
     }

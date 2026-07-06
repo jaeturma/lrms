@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\District;
 use App\Models\LearningResource;
-use App\Models\LearningResourceType;
 use App\Models\School;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -31,7 +30,7 @@ class AdminDashboardController extends Controller
             ]);
 
         $schools = School::query()
-            ->with(['district', 'municipality'])
+            ->with(['district', 'municipality', 'barangay'])
             ->withCount('learningResources')
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($nestedQuery) use ($search): void {
@@ -49,6 +48,7 @@ class AdminDashboardController extends Controller
                 'school_name' => $school->school_name,
                 'district' => $school->district?->name,
                 'municipality' => $school->municipality?->name,
+                'barangay' => $school->barangay?->name,
                 'is_activated' => $school->is_activated,
                 'learning_resources_count' => $school->learning_resources_count,
             ]);
@@ -67,9 +67,6 @@ class AdminDashboardController extends Controller
             ],
             'reportsByDistrict' => $reportsByDistrict,
             'schools' => $schools,
-            'learningResourceTypes' => LearningResourceType::query()
-                ->orderBy('name')
-                ->get(['id', 'name', 'is_active']),
         ]);
     }
 }

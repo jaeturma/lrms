@@ -28,15 +28,20 @@ class SchoolActivationRequest extends FormRequest
         $school = $this->route('school');
 
         return [
-            'school_head' => ['required', 'string', 'max:255'],
-            'librarian' => ['nullable', 'string', 'max:255'],
-            'property_custodian' => ['nullable', 'string', 'max:255'],
+            'school_head' => ['required', 'string', 'max:50'],
+            'librarian' => ['nullable', 'string', 'max:50'],
+            'property_custodian' => ['nullable', 'string', 'max:50'],
+            'primary_mobile_no' => ['nullable', 'regex:/^09\d{9}$/', 'max:11'],
+            'secondary_mobile_no' => ['nullable', 'regex:/^09\d{9}$/', 'max:11'],
             'email' => [
                 'required',
                 'email',
-                'max:255',
+                'max:50',
                 Rule::unique('users', 'email')->ignore($school?->user_id),
             ],
+            'municipality_id' => ['nullable', 'integer', 'exists:municipalities,id'],
+            'district_id' => ['nullable', 'integer', 'exists:districts,id'],
+            'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
         ];
     }
 }

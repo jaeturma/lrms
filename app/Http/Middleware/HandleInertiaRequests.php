@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\AppSettingsService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -38,6 +39,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'branding' => app(AppSettingsService::class)->branding(),
             'auth' => [
                 'user' => $request->user(),
             ],
@@ -45,6 +47,8 @@ class HandleInertiaRequests extends Middleware
                 'status' => $request->session()->get('status'),
                 'generatedPassword' => $request->session()->get('generatedPassword'),
                 'generatedEmail' => $request->session()->get('generatedEmail'),
+                'otpPending' => $request->session()->get('otpPending'),
+                'otpExpiresAt' => $request->session()->get('otpExpiresAt'),
                 'importSummary' => $request->session()->get('importSummary'),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
