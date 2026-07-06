@@ -2,15 +2,19 @@ import { useSyncExternalStore } from 'react';
 
 export type ResolvedAppearance = 'light' | 'dark';
 export type Appearance = ResolvedAppearance | 'system';
+export type ColorTheme = 'slate' | 'ocean' | 'forest' | 'sunset' | 'rose';
 
 export type UseAppearanceReturn = {
     readonly appearance: Appearance;
     readonly resolvedAppearance: ResolvedAppearance;
+    readonly colorTheme: ColorTheme;
     readonly updateAppearance: (mode: Appearance) => void;
+    readonly updateColorTheme: (theme: ColorTheme) => void;
 };
 
 const listeners = new Set<() => void>();
 let currentAppearance: Appearance = 'system';
+let currentColorTheme: ColorTheme = 'slate';
 
 const prefersDark = (): boolean => {
     if (typeof window === 'undefined') {
@@ -37,6 +41,14 @@ const getStoredAppearance = (): Appearance => {
     return (localStorage.getItem('appearance') as Appearance) || 'system';
 };
 
+const getStoredColorTheme = (): ColorTheme => {
+    if (typeof window === 'undefined') {
+        return 'slate';
+    }
+
+    return (localStorage.getItem('colorTheme') as ColorTheme) || 'slate';
+};
+
 const isDarkMode = (appearance: Appearance): boolean => {
     return appearance === 'dark' || (appearance === 'system' && prefersDark());
 };
@@ -50,6 +62,14 @@ const applyTheme = (appearance: Appearance): void => {
 
     document.documentElement.classList.toggle('dark', isDark);
     document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+};
+
+const applyColorTheme = (theme: ColorTheme): void => {
+    if (typeof document === 'undefined') {
+        return;
+    }
+
+    document.documentElement.setAttribute('data-color-theme', theme);
 };
 
 const subscribe = (callback: () => void) => {
@@ -80,8 +100,15 @@ export function initializeTheme(): void {
         setCookie('appearance', 'system');
     }
 
+    if (!localStorage.getItem('colorTheme')) {
+        localStorage.setItem('colorTheme', 'slate');
+        setCookie('colorTheme', 'slate');
+    }
+
     currentAppearance = getStoredAppearance();
+    currentColorTheme = getStoredColorTheme();
     applyTheme(currentAppearance);
+    applyColorTheme(currentColorTheme);
 
     // Set up system theme change listener
     mediaQuery()?.addEventListener('change', handleSystemThemeChange);
@@ -98,6 +125,8 @@ export function useAppearance(): UseAppearanceReturn {
         ? 'dark'
         : 'light';
 
+    const colorTheme: ColorTheme = currentColorTheme;
+
     const updateAppearance = (mode: Appearance): void => {
         currentAppearance = mode;
 
@@ -111,5 +140,21 @@ export function useAppearance(): UseAppearanceReturn {
         notify();
     };
 
-    return { appearance, resolvedAppearance, updateAppearance } as const;
+    const updateColorTheme = (theme: ColorTheme): void => {
+        currentColorTheme = theme;
+
+        localStorage.setItem('colorTheme', theme);
+        setCookie('colorTheme', theme);
+
+        applyColorTheme(theme);
+        notify();
+    };
+
+    return {
+        appearance,
+        resolvedAppearance,
+        colorTheme,
+        updateAppearance,
+        updateColorTheme,
+    } as const;
 }

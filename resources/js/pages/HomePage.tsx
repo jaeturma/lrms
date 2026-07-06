@@ -1,19 +1,35 @@
-import { Head, Link } from '@inertiajs/react';
-import { FormEvent, useState } from 'react';
+import { Head, usePage } from '@inertiajs/react';
+import type { FormEvent} from 'react';
+import { useState } from 'react';
+import AppLogoIcon from '@/components/app-logo-icon';
+import { GlobalFooter } from '@/components/global-footer';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { resolveBrandingImageUrl } from '@/lib/branding';
 import http from '@/lib/http';
 
 type FindSchoolResponse = {
-    next_url: string;
+    next_url?: string;
+    redirect_url?: string;
     message?: string;
+    is_activated?: boolean;
+};
+
+type Branding = {
+    login_logo_url?: string | null;
+    app_logo_url?: string | null;
 };
 
 export default function HomePage() {
+    const { branding } = usePage<{ branding?: Branding }>().props;
     const [schoolId, setSchoolId] = useState('');
     const [error, setError] = useState<string | undefined>();
     const [loading, setLoading] = useState(false);
+    const [logoFailed, setLogoFailed] = useState(false);
+    const logoUrl = resolveBrandingImageUrl(
+        branding?.login_logo_url ?? branding?.app_logo_url,
+    );
 
     const handleContinue = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -29,7 +45,13 @@ export default function HomePage() {
                 alert(response.data.message);
             }
 
-            window.location.href = response.data.next_url;
+            const redirectUrl = response.data.is_activated
+                ? response.data.redirect_url
+                : response.data.next_url;
+
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            }
         } catch {
             setError('Invalid School ID. Please verify and try again.');
         } finally {
@@ -41,11 +63,29 @@ export default function HomePage() {
         <>
             <Head title="Learning Resources Monitoring System" />
 
-            <main className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white px-4 py-10 md:px-8">
-                <div className="mx-auto max-w-5xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl md:p-10">
+            <main className="flex min-h-screen flex-col bg-background/40 px-4 py-10 md:px-8">
+                <div className="mx-auto w-full max-w-5xl rounded-3xl border border-border bg-card p-6 shadow-xl md:p-10">
                     <div className="mb-8 space-y-2 text-center">
+                        <div className="mb-3 flex justify-center">
+                            {logoUrl && !logoFailed ? (
+                                <img
+                                    src={logoUrl}
+                                    alt="Login logo"
+                                    className="h-20 w-20 object-contain"
+                                    onError={() => setLogoFailed(true)}
+                                />
+                            ) : (
+                                <AppLogoIcon className="h-20 w-20 fill-current text-[var(--foreground)]" />
+                            )}
+                        </div>
                         <p className="text-xs font-semibold tracking-[0.3em] text-slate-500">
                             DEPARTMENT OF EDUCATION
+                        </p>
+                        <p className="text-sm font-semibold tracking-[0.18em] text-foreground">
+                            SCHOOLS DIVISION OF DAVAO DE ORO
+                        </p>
+                        <p className="text-xs tracking-[0.24em] text-muted-foreground">
+                            CURRICULUM IMPLEMENTATION DIVISION - LRMDC
                         </p>
                         <h1 className="text-2xl font-bold text-slate-900 md:text-4xl">
                             Learning Resources Monitoring System
@@ -75,13 +115,9 @@ export default function HomePage() {
                             {loading ? 'Checking...' : 'Continue'}
                         </Button>
                     </form>
-
-                    <div className="mt-8 text-center text-sm text-slate-600">
-                        Administrator?{' '}
-                        <Link href="/app/admin/login" className="font-semibold text-slate-900 underline">
-                            Go to Admin Login
-                        </Link>
-                    </div>
+                </div>
+                <div className="mt-6">
+                    <GlobalFooter />
                 </div>
             </main>
         </>

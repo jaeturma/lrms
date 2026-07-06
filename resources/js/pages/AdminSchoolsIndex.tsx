@@ -1,4 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Check, Eye, Pencil, Trash2 } from 'lucide-react';
+import { DataTable } from '@/components/data-table';
+import { Button } from '@/components/ui/button';
 
 type District = {
     id: number;
@@ -10,7 +14,9 @@ type SchoolRow = {
     school_name: string;
     district: string;
     municipality: string;
+    barangay: string;
     is_activated: boolean;
+    activation_requested_at?: string | null;
     learning_resources_count: number;
 };
 
@@ -34,125 +40,169 @@ export default function AdminSchoolsIndex({ districts, filters, schools }: Props
             return;
         }
 
-        router.delete(`/app/admin/schools/${schoolId}`, {
-            preserveScroll: true,
-        });
+        router.delete(`/app/admin/schools/${schoolId}`, { preserveScroll: true });
     };
+
+    const columns: ColumnDef<SchoolRow>[] = [
+        { accessorKey: 'school_id', header: 'School ID' },
+        { accessorKey: 'school_name', header: 'School Name' },
+        { accessorKey: 'district', header: 'District' },
+        {
+            id: 'municipality_barangay',
+            header: 'Municipality/Barangay',
+            accessorFn: (row) => `${row.municipality ?? '-'} - ${row.barangay ?? '-'}`,
+            cell: ({ row }) => `${row.original.municipality ?? '-'} - ${row.original.barangay ?? '-'}`,
+        },
+        {
+            accessorKey: 'is_activated',
+            header: 'Status',
+            cell: ({ row }) => (
+                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                    row.original.is_activated
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : row.original.activation_requested_at
+                          ? 'bg-blue-100 text-blue-700'
+                        : 'bg-amber-100 text-amber-700'
+                }`}>
+                    {row.original.is_activated
+                        ? 'Activated'
+                        : row.original.activation_requested_at
+                          ? 'Requested'
+                          : 'Pending'}
+                </span>
+            ),
+        },
+        {
+            accessorKey: 'learning_resources_count',
+            header: 'Resources',
+        },
+        {
+            id: 'actions',
+            header: 'Actions',
+            enableSorting: false,
+            cell: ({ row }) => (
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href={`/app/admin/schools/${row.original.school_id}`}>
+                            <Eye className="h-3.5 w-3.5" />
+                        </Link>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href={`/app/admin/schools/${row.original.school_id}/edit`}>
+                            <Pencil className="h-3.5 w-3.5" />
+                        </Link>
+                    </Button>
+                    {!row.original.is_activated && row.original.activation_requested_at && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                            onClick={() =>
+                                router.post(
+                                    `/app/admin/schools/${row.original.school_id}/manual-activate`,
+                                    {},
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            <Check className="h-3.5 w-3.5" />
+                        </Button>
+                    )}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-red-300 text-red-700 hover:bg-red-50"
+                        onClick={() => deleteSchool(row.original.school_id)}
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                </div>
+            ),
+        },
+    ];
 
     return (
         <>
             <Head title="Schools Management" />
 
-            <main className="min-h-screen bg-slate-50 p-4 md:p-8">
-                <div className="mx-auto max-w-7xl space-y-6">
-                    <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5">
-                        <div>
-                            <h1 className="text-2xl font-bold text-slate-900">Schools Management</h1>
-                            <p className="text-sm text-slate-600">Create, update, and remove schools from one place.</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Link href="/app/admin/schools/create" className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white">
-                                Add School
-                            </Link>
-                            <Link href="/app/admin/dashboard" className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700">
-                                Back to Dashboard
-                            </Link>
-                        </div>
-                    </header>
+            <div className="space-y-6 bg-muted/50 p-4 md:p-6">
+                <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-input bg-background p-5 shadow-sm">
+                    <div>
+                        <h1 className="text-2xl font-bold text-foreground">Schools Management</h1>
+                        <p className="text-sm text-muted-foreground">Create, update, and remove schools.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Link
+                            href="/app/admin/import/schools"
+                            className="rounded-md border border-input bg-background px-4 py-2 text-sm text-foreground"
+                        >
+                            Import CSV
+                        </Link>
+                        <Link
+                            href="/app/admin/schools/create"
+                            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+                        >
+                            Add School
+                        </Link>
+                    </div>
+                </header>
 
-                    <section className="rounded-2xl border border-slate-200 bg-white p-5">
-                        <form method="get" action="/app/admin/schools" className="grid gap-3 md:grid-cols-3">
-                            <input
-                                name="search"
-                                defaultValue={filters.search ?? ''}
-                                placeholder="Search school name or ID"
-                                className="h-10 rounded-md border border-slate-300 px-3 text-sm"
-                            />
-                            <select
-                                name="district_id"
-                                defaultValue={filters.district_id ?? ''}
-                                className="h-10 rounded-md border border-slate-300 px-3 text-sm"
-                            >
-                                <option value="">All Districts</option>
-                                {districts.map((district) => (
-                                    <option key={district.id} value={district.id}>
-                                        {district.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <button type="submit" className="h-10 rounded-md bg-slate-900 px-4 text-sm text-white">
-                                Apply Filters
-                            </button>
-                        </form>
-                    </section>
+                <section className="rounded-2xl border border-input bg-background p-5 shadow-sm">
+                    <form method="get" action="/app/admin/schools" className="mb-4 flex flex-wrap gap-2">
+                        <input
+                            name="search"
+                            defaultValue={filters.search ?? ''}
+                            placeholder="Search school name or ID"
+                            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                        />
+                        <select
+                            name="district_id"
+                            defaultValue={filters.district_id ?? ''}
+                            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                            <option value="">All Districts</option>
+                            {districts.map((district) => (
+                                <option key={district.id} value={district.id}>
+                                    {district.name}
+                                </option>
+                            ))}
+                        </select>
+                        <button type="submit" className="h-10 rounded-md bg-primary px-4 text-sm text-primary-foreground">
+                            Filter
+                        </button>
+                    </form>
 
-                    <section className="rounded-2xl border border-slate-200 bg-white p-5">
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full text-sm">
-                                <thead className="bg-slate-100 text-left text-slate-700">
-                                    <tr>
-                                        <th className="px-3 py-2">School ID</th>
-                                        <th className="px-3 py-2">School Name</th>
-                                        <th className="px-3 py-2">District</th>
-                                        <th className="px-3 py-2">Municipality</th>
-                                        <th className="px-3 py-2">Status</th>
-                                        <th className="px-3 py-2">Resources</th>
-                                        <th className="px-3 py-2">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {schools.data.map((school) => (
-                                        <tr key={school.school_id} className="border-t border-slate-200">
-                                            <td className="px-3 py-2">{school.school_id}</td>
-                                            <td className="px-3 py-2">{school.school_name}</td>
-                                            <td className="px-3 py-2">{school.district}</td>
-                                            <td className="px-3 py-2">{school.municipality}</td>
-                                            <td className="px-3 py-2">{school.is_activated ? 'Activated' : 'Pending'}</td>
-                                            <td className="px-3 py-2">{school.learning_resources_count}</td>
-                                            <td className="px-3 py-2">
-                                                <div className="flex gap-2">
-                                                    <Link
-                                                        href={`/app/admin/schools/${school.school_id}/edit`}
-                                                        className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700"
-                                                    >
-                                                        Edit
-                                                    </Link>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => deleteSchool(school.school_id)}
-                                                        className="rounded border border-red-300 px-2 py-1 text-xs text-red-700"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                    <DataTable
+                        columns={columns}
+                        data={schools.data}
+                        searchPlaceholder="Search in results…"
+                        searchColumn="school_name"
+                    />
 
+                    {schools.links.length > 3 && (
                         <div className="mt-4 flex flex-wrap gap-2 text-sm">
                             {schools.links.map((link, index) => (
                                 <span key={index}>
                                     {link.url ? (
                                         <Link
                                             href={link.url}
-                                            className={`rounded px-3 py-1 ${link.active ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'}`}
+                                            className={`rounded border px-3 py-1 ${link.active ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background text-foreground'}`}
                                             dangerouslySetInnerHTML={{ __html: link.label }}
                                         />
                                     ) : (
                                         <span
-                                            className="rounded bg-slate-100 px-3 py-1 text-slate-400"
+                                            className="rounded border border-input bg-background px-3 py-1 text-muted-foreground"
                                             dangerouslySetInnerHTML={{ __html: link.label }}
                                         />
                                     )}
                                 </span>
                             ))}
                         </div>
-                    </section>
-                </div>
-            </main>
+                    )}
+                </section>
+            </div>
         </>
     );
 }

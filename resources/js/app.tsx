@@ -13,9 +13,6 @@ createInertiaApp({
     layout: (name) => {
         switch (true) {
             case name === 'HomePage':
-            case name === 'SchoolActivationPage':
-            case name === 'AdminDashboard':
-            case name === 'SchoolImportPage':
                 return null;
             case name === 'LoginPage':
             case name === 'AdminLoginPage':

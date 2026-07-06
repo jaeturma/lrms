@@ -1,26 +1,30 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import type { ReactNode } from 'react';
+import { toast } from 'sonner';
 
 type School = {
     school_id: string;
     school_name: string;
+    school_type?: string | null;
     district?: string | null;
     municipality?: string | null;
     barangay?: string | null;
     school_head?: string | null;
     librarian?: string | null;
     property_custodian?: string | null;
+    primary_mobile_no?: string | null;
+    secondary_mobile_no?: string | null;
     email?: string | null;
 };
 
 type District = {
     id: number;
+    municipality_id: number;
     name: string;
 };
 
 type Municipality = {
     id: number;
-    district_id: number;
     name: string;
 };
 
@@ -31,6 +35,7 @@ type Barangay = {
 };
 
 type Props = {
+    schoolTypes: string[];
     school: School & {
         id: number;
         district_id: number;
@@ -42,21 +47,24 @@ type Props = {
     barangays: Barangay[];
 };
 
-export default function AdminSchoolEdit({ school, districts, municipalities, barangays }: Props) {
+export default function AdminSchoolEdit({ school, schoolTypes, districts, municipalities, barangays }: Props) {
     const { data, setData, put, processing, errors } = useForm({
         school_id: school.school_id,
         school_name: school.school_name,
-        district_id: school.district_id,
+        school_type: school.school_type ?? schoolTypes[0] ?? '',
         municipality_id: school.municipality_id,
+        district_id: school.district_id,
         barangay_id: school.barangay_id ?? '',
         school_head: school.school_head ?? '',
         librarian: school.librarian ?? '',
         property_custodian: school.property_custodian ?? '',
+        primary_mobile_no: school.primary_mobile_no ?? '',
+        secondary_mobile_no: school.secondary_mobile_no ?? '',
         email: school.email ?? '',
     });
 
-    const filteredMunicipalities = municipalities.filter(
-        (municipality) => municipality.district_id === Number(data.district_id),
+    const filteredDistricts = districts.filter(
+        (district) => district.municipality_id === Number(data.municipality_id),
     );
 
     const filteredBarangays = barangays.filter(
@@ -64,48 +72,55 @@ export default function AdminSchoolEdit({ school, districts, municipalities, bar
     );
 
     const submit = () => {
-        put(`/app/admin/schools/${school.school_id}`);
+        put(`/app/admin/schools/${school.school_id}`, {
+            onSuccess: () => {
+                toast.success('School details updated.');
+            },
+            onError: () => {
+                toast.error('Unable to update school. Please review the form fields.');
+            },
+        });
     };
 
     return (
         <>
             <Head title={`Edit ${school.school_name}`} />
 
-            <main className="min-h-screen bg-slate-50 p-4 md:p-8">
-                <div className="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white p-6">
+            <main className="min-h-screen bg-background/40 p-4 md:p-8">
+                <div className="mx-auto max-w-7xl rounded-2xl border border-border bg-card/95 p-6 shadow-md md:p-8">
                     <div className="mb-6 flex items-center justify-between">
-                        <h1 className="text-xl font-bold text-slate-900">Edit School</h1>
-                        <Link href="/app/admin/dashboard" className="text-sm text-slate-700 underline">
-                            Back to Dashboard
+                        <h1 className="text-xl font-bold text-foreground">Edit School</h1>
+                        <Link href="/app/admin/schools" className="text-sm text-foreground underline">
+                            Back to Index
                         </Link>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <Field label="School ID" error={errors.school_id}>
-                            <input
-                                className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
-                                value={data.school_id}
-                                onChange={(event) => setData('school_id', event.target.value)}
-                            />
-                        </Field>
-
+                    <div className="grid gap-4 lg:grid-cols-3">
                         <Field label="School Name" error={errors.school_name}>
                             <input
-                                className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                                 value={data.school_name}
                                 onChange={(event) => setData('school_name', event.target.value)}
                             />
                         </Field>
 
-                        <Field label="District" error={errors.district_id}>
+                        <Field label="School ID" error={errors.school_id}>
+                            <input
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.school_id}
+                                onChange={(event) => setData('school_id', event.target.value)}
+                            />
+                        </Field>
+
+                        <Field label="Type" error={errors.school_type}>
                             <select
-                                className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
-                                value={data.district_id}
-                                onChange={(event) => setData('district_id', Number(event.target.value))}
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.school_type}
+                                onChange={(event) => setData('school_type', event.target.value)}
                             >
-                                {districts.map((district) => (
-                                    <option key={district.id} value={district.id}>
-                                        {district.name}
+                                {schoolTypes.map((schoolType) => (
+                                    <option key={schoolType} value={schoolType}>
+                                        {schoolType}
                                     </option>
                                 ))}
                             </select>
@@ -113,11 +128,21 @@ export default function AdminSchoolEdit({ school, districts, municipalities, bar
 
                         <Field label="Municipality" error={errors.municipality_id}>
                             <select
-                                className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                                 value={data.municipality_id}
-                                onChange={(event) => setData('municipality_id', Number(event.target.value))}
+                                onChange={(event) => {
+                                    const nextMunicipalityId = Number(event.target.value);
+                                    const nextDistrict = districts.find((district) => district.municipality_id === nextMunicipalityId);
+
+                                    setData((currentData) => ({
+                                        ...currentData,
+                                        municipality_id: nextMunicipalityId,
+                                        district_id: nextDistrict?.id ?? 0,
+                                        barangay_id: '',
+                                    }));
+                                }}
                             >
-                                {filteredMunicipalities.map((municipality) => (
+                                {municipalities.map((municipality) => (
                                     <option key={municipality.id} value={municipality.id}>
                                         {municipality.name}
                                     </option>
@@ -125,9 +150,23 @@ export default function AdminSchoolEdit({ school, districts, municipalities, bar
                             </select>
                         </Field>
 
+                        <Field label="District" error={errors.district_id}>
+                            <select
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.district_id}
+                                onChange={(event) => setData('district_id', Number(event.target.value))}
+                            >
+                                {filteredDistricts.map((district) => (
+                                    <option key={district.id} value={district.id}>
+                                        {district.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </Field>
+
                         <Field label="Barangay" error={errors.barangay_id}>
                             <select
-                                className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                                 value={data.barangay_id}
                                 onChange={(event) => setData('barangay_id', event.target.value === '' ? '' : Number(event.target.value))}
                             >
@@ -142,32 +181,48 @@ export default function AdminSchoolEdit({ school, districts, municipalities, bar
 
                         <Field label="School Head" error={errors.school_head}>
                             <input
-                                className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                                 value={data.school_head}
                                 onChange={(event) => setData('school_head', event.target.value)}
                             />
                         </Field>
 
+                        <Field label="Property Custodian" error={errors.property_custodian}>
+                            <input
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.property_custodian}
+                                onChange={(event) => setData('property_custodian', event.target.value)}
+                            />
+                        </Field>
+
                         <Field label="Librarian" error={errors.librarian}>
                             <input
-                                className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                                 value={data.librarian}
                                 onChange={(event) => setData('librarian', event.target.value)}
                             />
                         </Field>
 
-                        <Field label="Property Custodian" error={errors.property_custodian}>
+                        <Field label="Primary Mobile No." error={errors.primary_mobile_no}>
                             <input
-                                className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
-                                value={data.property_custodian}
-                                onChange={(event) => setData('property_custodian', event.target.value)}
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.primary_mobile_no}
+                                onChange={(event) => setData('primary_mobile_no', event.target.value)}
+                            />
+                        </Field>
+
+                        <Field label="Secondary No." error={errors.secondary_mobile_no}>
+                            <input
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.secondary_mobile_no}
+                                onChange={(event) => setData('secondary_mobile_no', event.target.value)}
                             />
                         </Field>
 
                         <Field label="Email" error={errors.email}>
                             <input
                                 type="email"
-                                className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                                 value={data.email}
                                 onChange={(event) => setData('email', event.target.value)}
                             />
@@ -178,7 +233,7 @@ export default function AdminSchoolEdit({ school, districts, municipalities, bar
                         <button
                             type="button"
                             onClick={submit}
-                            className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white"
+                            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
                             disabled={processing}
                         >
                             {processing ? 'Saving...' : 'Update School'}
@@ -201,7 +256,7 @@ function Field({
 }) {
     return (
         <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">{label}</label>
             {children}
             {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
         </div>

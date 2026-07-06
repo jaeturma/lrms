@@ -14,13 +14,13 @@ export default function AdminLoginPage() {
             <Form
                 action="/app/admin/login"
                 method="post"
-                className="mx-auto mt-12 w-full max-w-md space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                className="mx-auto mt-6 w-full max-w-md space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm"
             >
                 {({ errors, processing }) => (
                     <>
                         <div>
-                            <h1 className="text-xl font-semibold text-slate-900">Admin Login</h1>
-                            <p className="text-sm text-slate-600">Access LRMS dashboard and reports.</p>
+                            <h1 className="text-xl font-semibold text-foreground">Admin Login</h1>
+                            <p className="text-sm text-muted-foreground">Access LRMS dashboard and reports.</p>
                         </div>
 
                         <div className="space-y-1">

@@ -7,6 +7,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import { cn } from '@/lib/utils';
 import type { NavItem } from '@/types';
 
 export function NavMain({ items = [] }: { items: NavItem[] }) {
@@ -24,7 +25,11 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                             tooltip={{ children: item.title }}
                         >
                             <Link href={item.href} prefetch>
-                                {item.icon && <item.icon />}
+                                {item.icon && (
+                                    <span className={cn('flex items-center justify-center text-sidebar-accent-foreground', item.iconClassName)}>
+                                        <item.icon className="size-5 fill-current stroke-current stroke-[1.75]" />
+                                    </span>
+                                )}
                                 <span>{item.title}</span>
                             </Link>
                         </SidebarMenuButton>

@@ -7,6 +7,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { toUrl } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { NavItem } from '@/types';
 
 export function NavFooter({
@@ -31,11 +32,9 @@ export function NavFooter({
                             >
                                 <a
                                     href={toUrl(item.href)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
                                 >
                                     {item.icon && (
-                                        <item.icon className="h-5 w-5" />
+                                        <item.icon className={cn('h-5 w-5', item.iconClassName)} />
                                     )}
                                     <span>{item.title}</span>
                                 </a>
