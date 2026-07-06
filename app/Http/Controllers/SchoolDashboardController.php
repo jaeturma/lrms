@@ -6,6 +6,7 @@ use App\Http\Resources\LearningResourceResource;
 use App\Http\Resources\SchoolResource;
 use App\Models\LearningResource;
 use App\Models\LearningResourceType;
+use App\Models\ResourceTitle;
 use App\Models\School;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -60,6 +61,25 @@ class SchoolDashboardController extends Controller
             'school' => SchoolResource::make($school),
             'learningResources' => LearningResourceResource::collection($learningResources),
             'learningResourceTypes' => $learningResourceTypes,
+            'resourceTitles' => ResourceTitle::query()
+                ->where('is_active', true)
+                ->with(['learningResourceType:id,name', 'gradeLevel:id,name'])
+                ->orderBy('title')
+                ->get()
+                ->map(fn (ResourceTitle $resourceTitle): array => [
+                    'id' => $resourceTitle->id,
+                    'title' => $resourceTitle->title,
+                    'author' => $resourceTitle->author,
+                    'publisher' => $resourceTitle->publisher,
+                    'language' => $resourceTitle->language,
+                    'subject' => $resourceTitle->subject,
+                    'resource_type' => $resourceTitle->learningResourceType?->name,
+                    'grade_level' => $resourceTitle->gradeLevel?->name,
+                    'isbn' => $resourceTitle->isbn,
+                    'cover_image_url' => $resourceTitle->coverImageUrl(),
+                    'attachment_url' => $resourceTitle->attachmentUrl(),
+                    'media_url' => $resourceTitle->media_url,
+                ]),
         ]);
     }
 

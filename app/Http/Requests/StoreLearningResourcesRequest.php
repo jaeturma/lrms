@@ -26,13 +26,19 @@ class StoreLearningResourcesRequest extends FormRequest
         return [
             'resources' => ['required', 'array', 'min:1'],
             'resources.*.id' => ['nullable', 'integer', Rule::exists('learning_resources', 'id')],
+            'resources.*.resource_title_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('resource_titles', 'id')->where('is_active', true),
+            ],
             'resources.*.learning_resource_type_id' => [
-                'required',
+                'required_without:resources.*.resource_title_id',
+                'nullable',
                 'integer',
                 Rule::exists('learning_resource_types', 'id')->where('is_active', true),
             ],
-            'resources.*.title' => ['required', 'string', 'max:255'],
-            'resources.*.publisher' => ['required', 'string', 'max:255'],
+            'resources.*.title' => ['required_without:resources.*.resource_title_id', 'nullable', 'string', 'max:255'],
+            'resources.*.publisher' => ['required_without:resources.*.resource_title_id', 'nullable', 'string', 'max:255'],
             'resources.*.quantity_delivered' => ['required', 'integer', 'min:1'],
             'resources.*.quantity_with_issue_defect' => ['required', 'integer', 'min:0'],
             'resources.*.remarks' => ['nullable', 'string', 'max:255'],

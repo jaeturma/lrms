@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\GradeLevelController;
 use App\Http\Controllers\Admin\LearningMaterialsController;
 use App\Http\Controllers\Admin\LearningResourceTypeController;
 use App\Http\Controllers\Admin\ReportsController;
+use App\Http\Controllers\Admin\ResourceTitleController;
 use App\Http\Controllers\Admin\SchoolImportController;
 use App\Http\Controllers\Admin\SchoolManagementController;
 use App\Http\Controllers\Admin\SchoolYearController;
@@ -67,6 +68,10 @@ Route::prefix('/app/admin')
         Route::delete('/grade-levels/{gradeLevel}', [GradeLevelController::class, 'destroy'])->name('admin.grade-levels.destroy');
         Route::get('/learning-resource-types', [LearningResourceTypeController::class, 'index'])->name('admin.learning-resource-types.index');
         Route::get('/learning-materials', [LearningMaterialsController::class, 'index'])->name('admin.learning-materials.index');
+        Route::get('/resource-titles', [ResourceTitleController::class, 'index'])->name('admin.resource-titles.index');
+        Route::post('/resource-titles', [ResourceTitleController::class, 'store'])->name('admin.resource-titles.store');
+        Route::put('/resource-titles/{resourceTitle}', [ResourceTitleController::class, 'update'])->name('admin.resource-titles.update');
+        Route::delete('/resource-titles/{resourceTitle}', [ResourceTitleController::class, 'destroy'])->name('admin.resource-titles.destroy');
         Route::get('/equipment', [EquipmentController::class, 'index'])->name('admin.equipment.index');
         Route::get('/distributions', [DistributionController::class, 'index'])->name('admin.distributions.index');
         Route::post('/distributions', [DistributionController::class, 'store'])->name('admin.distributions.store');

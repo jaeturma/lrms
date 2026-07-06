@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    BookOpen,
     BookText,
     Boxes,
     CalendarRange,
@@ -67,6 +68,12 @@ const adminNavItems: NavItem[] = [
         href: '/app/admin/learning-materials',
         icon: BookText,
         iconClassName: 'text-indigo-600',
+    },
+    {
+        title: 'Resource Catalog',
+        href: '/app/admin/resource-titles',
+        icon: BookOpen,
+        iconClassName: 'text-sky-600',
     },
     {
         title: 'Equipment',

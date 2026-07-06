@@ -2,28 +2,23 @@
 
 namespace App\Models;
 
-use Database\Factories\LearningResourceFactory;
+use Database\Factories\ResourceTitleFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 
-class LearningResource extends Model
+class ResourceTitle extends Model
 {
-    /** @use HasFactory<LearningResourceFactory> */
+    /** @use HasFactory<ResourceTitleFactory> */
     use HasFactory;
 
     protected $fillable = [
-        'school_id',
         'learning_resource_type_id',
-        'resource_title_id',
         'grade_level_id',
         'title',
         'author',
-        'quantity_delivered',
-        'quantity_with_issue_defect',
-        'remarks',
         'publisher',
         'language',
         'subject',
@@ -32,8 +27,11 @@ class LearningResource extends Model
         'copyright_year',
         'pages',
         'isbn',
-        'attachment_path',
+        'description',
         'cover_image_path',
+        'attachment_path',
+        'media_url',
+        'is_active',
     ];
 
     protected function casts(): array
@@ -41,12 +39,8 @@ class LearningResource extends Model
         return [
             'copyright_year' => 'integer',
             'pages' => 'integer',
+            'is_active' => 'boolean',
         ];
-    }
-
-    public function school(): BelongsTo
-    {
-        return $this->belongsTo(School::class);
     }
 
     public function learningResourceType(): BelongsTo
@@ -59,18 +53,18 @@ class LearningResource extends Model
         return $this->belongsTo(GradeLevel::class);
     }
 
-    public function resourceTitle(): BelongsTo
+    public function learningResources(): HasMany
     {
-        return $this->belongsTo(ResourceTitle::class);
+        return $this->hasMany(LearningResource::class);
     }
 
-    public function inventory(): HasOne
+    public function coverImageUrl(): ?string
     {
-        return $this->hasOne(LearningResourceInventory::class);
+        return $this->cover_image_path ? Storage::disk('public')->url($this->cover_image_path) : null;
     }
 
-    public function inventoryMovements(): HasMany
+    public function attachmentUrl(): ?string
     {
-        return $this->hasMany(InventoryMovement::class);
+        return $this->attachment_path ? Storage::disk('public')->url($this->attachment_path) : null;
     }
 }

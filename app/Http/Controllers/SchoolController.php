@@ -12,6 +12,7 @@ use App\Mail\SchoolActivationOtpMail;
 use App\Models\Barangay;
 use App\Models\District;
 use App\Models\Municipality;
+use App\Models\ResourceTitle;
 use App\Models\School;
 use App\Services\AppSettingsService;
 use App\Services\LearningResourceInventoryService;
@@ -276,21 +277,50 @@ class SchoolController extends Controller
             abort(403);
         }
 
-        DB::transaction(function () use ($school, $resources, $existingIds, $submittedIds, $user, $inventoryService): void {
+        $catalogTitles = ResourceTitle::query()
+            ->whereIn('id', $resources->pluck('resource_title_id')->filter())
+            ->get()
+            ->keyBy('id');
+
+        DB::transaction(function () use ($school, $resources, $existingIds, $submittedIds, $user, $inventoryService, $catalogTitles): void {
             $school->learningResources()
                 ->whereIn('id', $existingIds->diff($submittedIds))
                 ->get()
                 ->each(fn ($resource) => $resource->delete());
 
             foreach ($resources as $payload) {
-                $attributes = [
-                    'learning_resource_type_id' => $payload['learning_resource_type_id'],
-                    'title' => $payload['title'],
-                    'publisher' => $payload['publisher'],
-                    'quantity_delivered' => $payload['quantity_delivered'],
-                    'quantity_with_issue_defect' => $payload['quantity_with_issue_defect'],
-                    'remarks' => $payload['remarks'] ?? null,
-                ];
+                $catalogTitle = $catalogTitles->get((int) ($payload['resource_title_id'] ?? 0));
+
+                // Catalog-backed entries take every descriptive detail from the
+                // division catalog; the school only supplies the quantities.
+                $attributes = $catalogTitle
+                    ? [
+                        'resource_title_id' => $catalogTitle->id,
+                        'learning_resource_type_id' => $catalogTitle->learning_resource_type_id,
+                        'grade_level_id' => $catalogTitle->grade_level_id,
+                        'title' => $catalogTitle->title,
+                        'author' => $catalogTitle->author,
+                        'publisher' => $catalogTitle->publisher ?? '',
+                        'language' => $catalogTitle->language,
+                        'subject' => $catalogTitle->subject,
+                        'volume' => $catalogTitle->volume,
+                        'edition' => $catalogTitle->edition,
+                        'copyright_year' => $catalogTitle->copyright_year,
+                        'pages' => $catalogTitle->pages,
+                        'isbn' => $catalogTitle->isbn,
+                        'quantity_delivered' => $payload['quantity_delivered'],
+                        'quantity_with_issue_defect' => $payload['quantity_with_issue_defect'],
+                        'remarks' => $payload['remarks'] ?? null,
+                    ]
+                    : [
+                        'resource_title_id' => null,
+                        'learning_resource_type_id' => $payload['learning_resource_type_id'],
+                        'title' => $payload['title'],
+                        'publisher' => $payload['publisher'],
+                        'quantity_delivered' => $payload['quantity_delivered'],
+                        'quantity_with_issue_defect' => $payload['quantity_with_issue_defect'],
+                        'remarks' => $payload['remarks'] ?? null,
+                    ];
 
                 if (! empty($payload['id'])) {
                     $resource = $school->learningResources()->with('inventory')->findOrFail((int) $payload['id']);

@@ -16,6 +16,7 @@ import http from '@/lib/http';
 type LearningResource = {
     id?: number;
     learning_resource_type_id: number;
+    resource_title_id?: number | null;
     resource_type: string | null;
     title: string;
     publisher: string;
@@ -27,6 +28,7 @@ type LearningResource = {
 type LearningResourceForm = {
     id?: number;
     learning_resource_type_id: number | '';
+    resource_title_id: number | '';
     resource_type: string;
     title: string;
     publisher: string;
@@ -40,12 +42,28 @@ type LearningResourceTypeOption = {
     name: string;
 };
 
+type ResourceTitleOption = {
+    id: number;
+    title: string;
+    author: string | null;
+    publisher: string | null;
+    language: string | null;
+    subject: string | null;
+    resource_type: string | null;
+    grade_level: string | null;
+    isbn: string | null;
+    cover_image_url: string | null;
+    attachment_url: string | null;
+    media_url: string | null;
+};
+
 type Props = {
     learningResources: LearningResource[] | { data: LearningResource[] };
     learningResourceTypes: LearningResourceTypeOption[];
+    resourceTitles: ResourceTitleOption[];
 };
 
-export default function SchoolLearningResources({ learningResources, learningResourceTypes }: Props) {
+export default function SchoolLearningResources({ learningResources, learningResourceTypes, resourceTitles }: Props) {
     const initialRows = useMemo<LearningResourceForm[]>(() => {
         const source = Array.isArray(learningResources)
             ? learningResources
@@ -54,6 +72,7 @@ export default function SchoolLearningResources({ learningResources, learningRes
         return source.map((resource) => ({
             id: resource.id,
             learning_resource_type_id: resource.learning_resource_type_id,
+            resource_title_id: resource.resource_title_id ?? '',
             resource_type: resource.resource_type ?? '',
             title: resource.title,
             publisher: resource.publisher,
@@ -74,6 +93,7 @@ export default function SchoolLearningResources({ learningResources, learningRes
     const [error, setError] = useState<string | null>(null);
     const [form, setForm] = useState<LearningResourceForm>({
         learning_resource_type_id: '',
+        resource_title_id: '',
         resource_type: '',
         title: '',
         publisher: '',
@@ -81,6 +101,10 @@ export default function SchoolLearningResources({ learningResources, learningRes
         quantity_with_issue_defect: 0,
         remarks: '',
     });
+
+    const selectedCatalogTitle = form.resource_title_id === ''
+        ? null
+        : resourceTitles.find((option) => option.id === form.resource_title_id) ?? null;
 
     const pageSize = 10;
     const totalRows = rows.length;
@@ -103,9 +127,10 @@ export default function SchoolLearningResources({ learningResources, learningRes
             const payload = {
                 resources: nextRows.map((row) => ({
                     id: row.id ?? null,
-                    learning_resource_type_id: row.learning_resource_type_id,
-                    title: row.title,
-                    publisher: row.publisher,
+                    resource_title_id: row.resource_title_id === '' ? null : row.resource_title_id,
+                    learning_resource_type_id: row.learning_resource_type_id === '' ? null : row.learning_resource_type_id,
+                    title: row.title || null,
+                    publisher: row.publisher || null,
                     quantity_delivered: Number(row.quantity_delivered),
                     quantity_with_issue_defect: Number(row.quantity_with_issue_defect),
                     remarks: row.remarks,
@@ -124,6 +149,7 @@ export default function SchoolLearningResources({ learningResources, learningRes
                 persistedRows.map((resource) => ({
                     id: resource.id,
                     learning_resource_type_id: resource.learning_resource_type_id,
+                    resource_title_id: resource.resource_title_id ?? '',
                     resource_type: resource.resource_type ?? '',
                     title: resource.title,
                     publisher: resource.publisher,
@@ -148,6 +174,7 @@ export default function SchoolLearningResources({ learningResources, learningRes
         setEditingIndex(null);
         setForm({
             learning_resource_type_id: learningResourceTypes[0]?.id ?? '',
+            resource_title_id: '',
             resource_type: learningResourceTypes[0]?.name ?? '',
             title: '',
             publisher: '',
@@ -156,6 +183,28 @@ export default function SchoolLearningResources({ learningResources, learningRes
             remarks: '',
         });
         setDialogOpen(true);
+    };
+
+    const selectCatalogTitle = (value: string) => {
+        if (value === '') {
+            setForm((current) => ({ ...current, resource_title_id: '' }));
+
+            return;
+        }
+
+        const option = resourceTitles.find((candidate) => candidate.id === Number(value));
+
+        if (!option) {
+            return;
+        }
+
+        setForm((current) => ({
+            ...current,
+            resource_title_id: option.id,
+            title: option.title,
+            publisher: option.publisher ?? '',
+            resource_type: option.resource_type ?? '',
+        }));
     };
 
     const openEditDialog = (index: number) => {
@@ -181,8 +230,8 @@ export default function SchoolLearningResources({ learningResources, learningRes
     };
 
     const saveDialogEntry = async () => {
-        if (! form.learning_resource_type_id || ! form.title || ! form.publisher) {
-            setError('Type, Title, and Publisher are required.');
+        if (form.resource_title_id === '' && (! form.learning_resource_type_id || ! form.title || ! form.publisher)) {
+            setError('Pick a catalog title, or provide the Type, Title, and Publisher manually.');
 
             return;
         }
@@ -325,55 +374,126 @@ export default function SchoolLearningResources({ learningResources, learningRes
 
                     <div className="grid gap-3">
                         <div>
-                            <label htmlFor="resource_type" className="mb-1 block text-sm font-medium text-foreground">
-                                Type *
+                            <label htmlFor="catalog_title" className="mb-1 block text-sm font-medium text-foreground">
+                                Division Catalog Title
                             </label>
                             <select
-                                id="resource_type"
-                                value={form.learning_resource_type_id}
-                                onChange={(event) =>
-                                    setForm((current) => ({
-                                        ...current,
-                                        learning_resource_type_id: event.target.value === '' ? '' : Number(event.target.value),
-                                        resource_type:
-                                            learningResourceTypes.find((type) => type.id === Number(event.target.value))?.name ?? '',
-                                    }))
-                                }
+                                id="catalog_title"
+                                value={form.resource_title_id}
+                                onChange={(event) => selectCatalogTitle(event.target.value)}
                                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                required
                             >
-                                <option value="">Select type</option>
-                                {learningResourceTypes.map((type) => (
-                                    <option key={type.id} value={type.id}>
-                                        {type.name}
+                                <option value="">Manual entry (not in catalog)</option>
+                                {resourceTitles.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                        {option.title}
+                                        {option.grade_level ? ` — ${option.grade_level}` : ''}
                                     </option>
                                 ))}
                             </select>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Pick from the division catalog so details come pre-filled — you only enter quantities.
+                            </p>
                         </div>
 
-                        <div>
-                            <label htmlFor="title" className="mb-1 block text-sm font-medium text-foreground">
-                                Title *
-                            </label>
-                            <Input
-                                id="title"
-                                value={form.title}
-                                onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-                                required
-                            />
-                        </div>
+                        {selectedCatalogTitle && (
+                            <div className="flex gap-3 rounded-lg border border-border bg-muted/50 p-3">
+                                {selectedCatalogTitle.cover_image_url && (
+                                    <img
+                                        src={selectedCatalogTitle.cover_image_url}
+                                        alt={`Cover of ${selectedCatalogTitle.title}`}
+                                        className="h-20 w-14 rounded object-cover shadow-sm"
+                                    />
+                                )}
+                                <div className="text-xs text-muted-foreground">
+                                    <p className="text-sm font-medium text-foreground">{selectedCatalogTitle.title}</p>
+                                    <p>{[selectedCatalogTitle.author, selectedCatalogTitle.publisher].filter(Boolean).join(' · ') || '-'}</p>
+                                    <p>
+                                        {[selectedCatalogTitle.resource_type, selectedCatalogTitle.grade_level, selectedCatalogTitle.subject, selectedCatalogTitle.language]
+                                            .filter(Boolean)
+                                            .join(' · ')}
+                                    </p>
+                                    {selectedCatalogTitle.isbn && <p>ISBN {selectedCatalogTitle.isbn}</p>}
+                                    <div className="mt-1 flex gap-2">
+                                        {selectedCatalogTitle.attachment_url && (
+                                            <a
+                                                href={selectedCatalogTitle.attachment_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-primary underline-offset-2 hover:underline"
+                                            >
+                                                View attachment
+                                            </a>
+                                        )}
+                                        {selectedCatalogTitle.media_url && (
+                                            <a
+                                                href={selectedCatalogTitle.media_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-primary underline-offset-2 hover:underline"
+                                            >
+                                                View media
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-                        <div>
-                            <label htmlFor="publisher" className="mb-1 block text-sm font-medium text-foreground">
-                                Publisher *
-                            </label>
-                            <Input
-                                id="publisher"
-                                value={form.publisher}
-                                onChange={(event) => setForm((current) => ({ ...current, publisher: event.target.value }))}
-                                required
-                            />
-                        </div>
+                        {!selectedCatalogTitle && (
+                            <>
+                                <div>
+                                    <label htmlFor="resource_type" className="mb-1 block text-sm font-medium text-foreground">
+                                        Type *
+                                    </label>
+                                    <select
+                                        id="resource_type"
+                                        value={form.learning_resource_type_id}
+                                        onChange={(event) =>
+                                            setForm((current) => ({
+                                                ...current,
+                                                learning_resource_type_id: event.target.value === '' ? '' : Number(event.target.value),
+                                                resource_type:
+                                                    learningResourceTypes.find((type) => type.id === Number(event.target.value))?.name ?? '',
+                                            }))
+                                        }
+                                        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                        required
+                                    >
+                                        <option value="">Select type</option>
+                                        {learningResourceTypes.map((type) => (
+                                            <option key={type.id} value={type.id}>
+                                                {type.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="title" className="mb-1 block text-sm font-medium text-foreground">
+                                        Title *
+                                    </label>
+                                    <Input
+                                        id="title"
+                                        value={form.title}
+                                        onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label htmlFor="publisher" className="mb-1 block text-sm font-medium text-foreground">
+                                        Publisher *
+                                    </label>
+                                    <Input
+                                        id="publisher"
+                                        value={form.publisher}
+                                        onChange={(event) => setForm((current) => ({ ...current, publisher: event.target.value }))}
+                                        required
+                                    />
+                                </div>
+                            </>
+                        )}
 
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div>
