@@ -82,4 +82,9 @@ class School extends Model
     {
         return $this->hasMany(Enrollment::class);
     }
+
+    public function equipment(): HasMany
+    {
+        return $this->hasMany(Equipment::class);
+    }
 }

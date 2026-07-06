@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\District;
 use App\Models\Enrollment;
+use App\Models\Equipment;
 use App\Models\LearningResource;
 use App\Models\School;
 use App\Models\SchoolYear;
@@ -64,6 +65,7 @@ class AdminDashboardController extends Controller
                 'activated_schools' => School::where('is_activated', true)->count(),
                 'pending_schools' => School::where('is_activated', false)->count(),
                 'total_learning_resources' => LearningResource::count(),
+                'total_equipment' => Equipment::count(),
                 'total_learners' => $activeSchoolYear
                     ? (int) Enrollment::query()
                         ->where('school_year_id', $activeSchoolYear->id)

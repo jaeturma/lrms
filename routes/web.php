@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminLocationController;
 use App\Http\Controllers\Admin\AppSettingsController;
 use App\Http\Controllers\Admin\ContentManagementController;
+use App\Http\Controllers\Admin\EquipmentController;
 use App\Http\Controllers\Admin\GradeLevelController;
 use App\Http\Controllers\Admin\LearningMaterialsController;
 use App\Http\Controllers\Admin\LearningResourceTypeController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\HomePageController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SchoolDashboardController;
 use App\Http\Controllers\SchoolEnrollmentController;
+use App\Http\Controllers\SchoolEquipmentController;
 use App\Http\Controllers\SchoolInventoryController;
 use Illuminate\Support\Facades\Route;
 
@@ -62,6 +64,7 @@ Route::prefix('/app/admin')
         Route::delete('/grade-levels/{gradeLevel}', [GradeLevelController::class, 'destroy'])->name('admin.grade-levels.destroy');
         Route::get('/learning-resource-types', [LearningResourceTypeController::class, 'index'])->name('admin.learning-resource-types.index');
         Route::get('/learning-materials', [LearningMaterialsController::class, 'index'])->name('admin.learning-materials.index');
+        Route::get('/equipment', [EquipmentController::class, 'index'])->name('admin.equipment.index');
         Route::get('/settings', [AppSettingsController::class, 'edit'])->name('admin.settings.edit');
         Route::put('/settings', [AppSettingsController::class, 'update'])->name('admin.settings.update');
         Route::get('/import/schools', [SchoolImportController::class, 'index'])->name('admin.import.index');
@@ -92,6 +95,10 @@ Route::middleware(['auth', 'role:school'])->group(function (): void {
     Route::put('/school/enrollment', [SchoolEnrollmentController::class, 'store'])->name('school.enrollment.store');
     Route::get('/school/inventory', [SchoolInventoryController::class, 'index'])->name('school.inventory.index');
     Route::post('/school/inventory/{learningResource}/movements', [SchoolInventoryController::class, 'storeMovement'])->name('school.inventory.movements.store');
+    Route::get('/school/equipment', [SchoolEquipmentController::class, 'index'])->name('school.equipment.index');
+    Route::post('/school/equipment', [SchoolEquipmentController::class, 'store'])->name('school.equipment.store');
+    Route::put('/school/equipment/{equipment}', [SchoolEquipmentController::class, 'update'])->name('school.equipment.update');
+    Route::delete('/school/equipment/{equipment}', [SchoolEquipmentController::class, 'destroy'])->name('school.equipment.destroy');
 });
 
 require __DIR__.'/settings.php';

@@ -31,6 +31,7 @@ type Props = {
         activated_schools: number;
         pending_schools: number;
         total_learning_resources: number;
+        total_equipment: number;
         total_learners: number;
     };
     activeSchoolYear: { id: number; name: string } | null;
@@ -122,7 +123,7 @@ export default function AdminDashboard({
                     </div>
                 </header>
 
-                <section className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+                <section className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                     <StatCard
                         label="Total Schools"
                         value={stats.total_schools}
@@ -142,6 +143,11 @@ export default function AdminDashboard({
                         label="Total Resources"
                         value={stats.total_learning_resources}
                         accentClassName="border-fuchsia-300/70 bg-gradient-to-br from-fuchsia-50 to-pink-100 text-fuchsia-900 dark:border-fuchsia-800 dark:from-fuchsia-950/45 dark:to-pink-950/45 dark:text-fuchsia-100"
+                    />
+                    <StatCard
+                        label="Total Equipment"
+                        value={stats.total_equipment}
+                        accentClassName="border-teal-300/70 bg-gradient-to-br from-teal-50 to-cyan-100 text-teal-900 dark:border-teal-800 dark:from-teal-950/45 dark:to-cyan-950/45 dark:text-teal-100"
                     />
                     <StatCard
                         label={activeSchoolYear ? `Learners · SY ${activeSchoolYear.name}` : 'Learners (No Active SY)'}

@@ -9,6 +9,7 @@ import {
     MapPinned,
     Map,
     MapPin,
+    MonitorSmartphone,
     School,
     Settings,
     Users,
@@ -64,6 +65,12 @@ const adminNavItems: NavItem[] = [
         href: '/app/admin/learning-materials',
         icon: BookText,
         iconClassName: 'text-indigo-600',
+    },
+    {
+        title: 'Equipment',
+        href: '/app/admin/equipment',
+        icon: MonitorSmartphone,
+        iconClassName: 'text-teal-600',
     },
     {
         title: 'Learning Material Types',
@@ -143,6 +150,12 @@ export function AppSidebar() {
             href: '/school/inventory',
             icon: Boxes,
             iconClassName: 'text-emerald-600',
+        },
+        {
+            title: 'Equipment',
+            href: '/school/equipment',
+            icon: MonitorSmartphone,
+            iconClassName: 'text-teal-600',
         },
         {
             title: 'Enrollment',
