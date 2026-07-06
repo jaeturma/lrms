@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\EquipmentController;
 use App\Http\Controllers\Admin\GradeLevelController;
 use App\Http\Controllers\Admin\LearningMaterialsController;
 use App\Http\Controllers\Admin\LearningResourceTypeController;
+use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\SchoolImportController;
 use App\Http\Controllers\Admin\SchoolManagementController;
 use App\Http\Controllers\Admin\SchoolYearController;
@@ -65,6 +66,9 @@ Route::prefix('/app/admin')
         Route::get('/learning-resource-types', [LearningResourceTypeController::class, 'index'])->name('admin.learning-resource-types.index');
         Route::get('/learning-materials', [LearningMaterialsController::class, 'index'])->name('admin.learning-materials.index');
         Route::get('/equipment', [EquipmentController::class, 'index'])->name('admin.equipment.index');
+        Route::get('/reports', [ReportsController::class, 'index'])->name('admin.reports.index');
+        Route::get('/reports/learning-resources/export', [ReportsController::class, 'exportLearningResources'])->name('admin.reports.learning-resources.export');
+        Route::get('/reports/equipment/export', [ReportsController::class, 'exportEquipment'])->name('admin.reports.equipment.export');
         Route::get('/settings', [AppSettingsController::class, 'edit'])->name('admin.settings.edit');
         Route::put('/settings', [AppSettingsController::class, 'update'])->name('admin.settings.update');
         Route::get('/import/schools', [SchoolImportController::class, 'index'])->name('admin.import.index');

@@ -3,6 +3,7 @@ import {
     BookText,
     Boxes,
     CalendarRange,
+    ChartColumn,
     Cog,
     GraduationCap,
     LayoutGrid,
@@ -71,6 +72,12 @@ const adminNavItems: NavItem[] = [
         href: '/app/admin/equipment',
         icon: MonitorSmartphone,
         iconClassName: 'text-teal-600',
+    },
+    {
+        title: 'Reports',
+        href: '/app/admin/reports',
+        icon: ChartColumn,
+        iconClassName: 'text-orange-600',
     },
     {
         title: 'Learning Material Types',
