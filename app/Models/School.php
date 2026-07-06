@@ -7,11 +7,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class School extends Model
 {
     /** @use HasFactory<SchoolFactory> */
-    use HasFactory;
+    use HasFactory, SoftDeletes;
+
+    public const SCHOOL_TYPES = [
+        'Elementary',
+        'Junior High School',
+        'JHS and SHS',
+        'SHS Only',
+        'Integrated School',
+    ];
 
     protected $fillable = [
         'district_id',
@@ -19,10 +28,14 @@ class School extends Model
         'barangay_id',
         'school_id',
         'school_name',
+        'school_type',
         'school_head',
         'librarian',
         'property_custodian',
+        'primary_mobile_no',
+        'secondary_mobile_no',
         'email',
+        'activation_requested_at',
         'user_id',
         'is_activated',
     ];
@@ -31,6 +44,7 @@ class School extends Model
     {
         return [
             'is_activated' => 'boolean',
+            'activation_requested_at' => 'datetime',
         ];
     }
 

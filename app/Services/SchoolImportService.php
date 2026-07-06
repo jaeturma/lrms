@@ -31,7 +31,7 @@ class SchoolImportService
 
         $header = fgetcsv($handle);
         $columns = collect($header ?? [])->map(fn (mixed $column): string => strtolower(trim((string) $column)))->values();
-        $requiredColumns = ['district', 'municipality', 'barangay', 'school_id', 'school_name'];
+        $requiredColumns = ['municipality', 'district', 'barangay', 'school_id', 'school_name'];
 
         foreach ($requiredColumns as $requiredColumn) {
             if (! $columns->contains($requiredColumn)) {
@@ -52,40 +52,50 @@ class SchoolImportService
             $rowNumber = $summary['total_rows'] + 1;
 
             try {
-                $districtName = trim((string) ($row[$columnIndexes['district']] ?? ''));
                 $municipalityName = trim((string) ($row[$columnIndexes['municipality']] ?? ''));
+                $districtName = trim((string) ($row[$columnIndexes['district']] ?? ''));
                 $barangayName = trim((string) ($row[$columnIndexes['barangay']] ?? ''));
                 $schoolId = trim((string) ($row[$columnIndexes['school_id']] ?? ''));
                 $schoolName = trim((string) ($row[$columnIndexes['school_name']] ?? ''));
 
-                if ($districtName === '' || $municipalityName === '' || $schoolId === '' || $schoolName === '') {
+                if ($schoolId === '' || $schoolName === '') {
                     $summary['skipped']++;
                     $summary['errors'][] = [
                         'row' => $rowNumber,
-                        'message' => 'Required values are missing.',
+                        'message' => 'School ID and School Name are required.',
                     ];
 
                     continue;
                 }
 
-                if (School::where('school_id', $schoolId)->exists()) {
+                if (School::withTrashed()->where('school_id', $schoolId)->exists()) {
                     $summary['skipped']++;
 
                     continue;
                 }
 
-                $district = District::firstOrCreate(['name' => $districtName]);
+                $municipalityId = null;
+                $districtId = null;
 
-                $municipality = Municipality::firstOrCreate([
-                    'district_id' => $district->id,
-                    'name' => $municipalityName,
-                ]);
+                if ($municipalityName !== '') {
+                    $municipality = Municipality::firstOrCreate(['name' => $municipalityName]);
+                    $municipalityId = $municipality->id;
+
+                    if ($districtName !== '') {
+                        $district = District::firstOrCreate([
+                            'municipality_id' => $municipality->id,
+                            'name' => $districtName,
+                        ]);
+
+                        $districtId = $district->id;
+                    }
+                }
 
                 $barangayId = null;
 
-                if ($barangayName !== '') {
+                if ($barangayName !== '' && $municipalityId !== null) {
                     $barangay = Barangay::firstOrCreate([
-                        'municipality_id' => $municipality->id,
+                        'municipality_id' => $municipalityId,
                         'name' => $barangayName,
                     ]);
 
@@ -93,8 +103,8 @@ class SchoolImportService
                 }
 
                 School::create([
-                    'district_id' => $district->id,
-                    'municipality_id' => $municipality->id,
+                    'municipality_id' => $municipalityId,
+                    'district_id' => $districtId,
                     'barangay_id' => $barangayId,
                     'school_id' => $schoolId,
                     'school_name' => $schoolName,

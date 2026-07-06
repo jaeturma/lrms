@@ -16,9 +16,12 @@ class LearningResourceResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'resource_type' => $this->resource_type,
-            'issue_defect' => $this->issue_defect,
-            'quantity' => $this->quantity,
+            'learning_resource_type_id' => $this->learning_resource_type_id,
+            'resource_type' => $this->learningResourceType?->name,
+            'title' => $this->title,
+            'quantity_delivered' => $this->quantity_delivered,
+            'quantity_with_issue_defect' => $this->quantity_with_issue_defect,
+            'remarks' => $this->remarks,
             'publisher' => $this->publisher,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

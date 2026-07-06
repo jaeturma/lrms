@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\LearningResource;
+use App\Models\LearningResourceType;
 use App\Models\School;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -20,10 +21,12 @@ class LearningResourceFactory extends Factory
     {
         return [
             'school_id' => School::factory(),
-            'resource_type' => fake()->randomElement(['Book', 'Module', 'Workbook']),
-            'issue_defect' => fake()->randomElement(['Missing pages', 'Torn cover', 'Unreadable print']),
-            'quantity' => fake()->numberBetween(1, 100),
+            'learning_resource_type_id' => LearningResourceType::factory(),
+            'title' => fake()->sentence(3),
             'publisher' => fake()->company(),
+            'quantity_delivered' => fake()->numberBetween(1, 100),
+            'quantity_with_issue_defect' => fake()->numberBetween(0, 10),
+            'remarks' => fake()->optional()->sentence(4),
         ];
     }
 }

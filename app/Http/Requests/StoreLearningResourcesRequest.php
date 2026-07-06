@@ -25,15 +25,16 @@ class StoreLearningResourcesRequest extends FormRequest
     {
         return [
             'resources' => ['required', 'array', 'min:1'],
-            'resources.*.resource_type' => [
+            'resources.*.learning_resource_type_id' => [
                 'required',
-                'string',
-                'max:255',
-                Rule::exists('learning_resource_types', 'name')->where('is_active', true),
+                'integer',
+                Rule::exists('learning_resource_types', 'id')->where('is_active', true),
             ],
-            'resources.*.issue_defect' => ['required', 'string', 'max:255'],
-            'resources.*.quantity' => ['required', 'numeric', 'min:1'],
+            'resources.*.title' => ['required', 'string', 'max:255'],
             'resources.*.publisher' => ['required', 'string', 'max:255'],
+            'resources.*.quantity_delivered' => ['required', 'integer', 'min:1'],
+            'resources.*.quantity_with_issue_defect' => ['required', 'integer', 'min:0'],
+            'resources.*.remarks' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

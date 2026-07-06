@@ -8,11 +8,11 @@ use App\Models\School;
 use App\Models\User;
 
 test('school user can save dynamic learning resources', function () {
-    LearningResourceType::query()->create(['name' => 'Book', 'is_active' => true]);
-    LearningResourceType::query()->create(['name' => 'Module', 'is_active' => true]);
+    $bookType = LearningResourceType::query()->create(['name' => 'Book', 'is_active' => true]);
+    $moduleType = LearningResourceType::query()->create(['name' => 'Module', 'is_active' => true]);
 
-    $district = District::factory()->create();
-    $municipality = Municipality::factory()->create(['district_id' => $district->id]);
+    $municipality = Municipality::factory()->create();
+    $district = District::factory()->create(['municipality_id' => $municipality->id]);
 
     $school = School::factory()->create([
         'district_id' => $district->id,
@@ -32,16 +32,20 @@ test('school user can save dynamic learning resources', function () {
     $payload = [
         'resources' => [
             [
-                'resource_type' => 'Book',
-                'issue_defect' => 'Missing pages',
-                'quantity' => 5,
+                'learning_resource_type_id' => $bookType->id,
+                'title' => 'Science Grade 6 Textbook',
                 'publisher' => 'DepEd Press',
+                'quantity_delivered' => 5,
+                'quantity_with_issue_defect' => 1,
+                'remarks' => 'Missing pages',
             ],
             [
-                'resource_type' => 'Module',
-                'issue_defect' => 'Unreadable print',
-                'quantity' => 2,
+                'learning_resource_type_id' => $moduleType->id,
+                'title' => 'Math Quarter 1 Module',
                 'publisher' => 'School Publisher',
+                'quantity_delivered' => 2,
+                'quantity_with_issue_defect' => 1,
+                'remarks' => 'Unreadable print',
             ],
         ],
     ];

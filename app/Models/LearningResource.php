@@ -14,14 +14,21 @@ class LearningResource extends Model
 
     protected $fillable = [
         'school_id',
-        'resource_type',
-        'issue_defect',
-        'quantity',
+        'learning_resource_type_id',
+        'title',
+        'quantity_delivered',
+        'quantity_with_issue_defect',
+        'remarks',
         'publisher',
     ];
 
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function learningResourceType(): BelongsTo
+    {
+        return $this->belongsTo(LearningResourceType::class);
     }
 }

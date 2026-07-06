@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LearningResourceType extends Model
 {
@@ -19,5 +20,10 @@ class LearningResourceType extends Model
         return [
             'is_active' => 'boolean',
         ];
+    }
+
+    public function learningResources(): HasMany
+    {
+        return $this->hasMany(LearningResource::class);
     }
 }

@@ -8,9 +8,20 @@ use App\Models\LearningResourceType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class LearningResourceTypeController extends Controller
 {
+    public function index(): Response
+    {
+        return Inertia::render('AdminLearningResourceTypes', [
+            'learningResourceTypes' => LearningResourceType::query()
+                ->orderBy('name')
+                ->get(['id', 'name', 'is_active']),
+        ]);
+    }
+
     public function store(StoreLearningResourceTypeRequest $request): RedirectResponse
     {
         LearningResourceType::query()->create([
@@ -40,6 +51,12 @@ class LearningResourceTypeController extends Controller
 
     public function destroy(LearningResourceType $learningResourceType): RedirectResponse
     {
+        if ($learningResourceType->learningResources()->exists()) {
+            return back()->withErrors([
+                'name' => 'This type is used by existing learning resources. Mark it inactive instead of deleting it.',
+            ]);
+        }
+
         $learningResourceType->delete();
 
         return back()->with('status', 'Learning material type deleted.');
