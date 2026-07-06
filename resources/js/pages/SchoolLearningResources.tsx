@@ -102,6 +102,7 @@ export default function SchoolLearningResources({ learningResources, learningRes
         try {
             const payload = {
                 resources: nextRows.map((row) => ({
+                    id: row.id ?? null,
                     learning_resource_type_id: row.learning_resource_type_id,
                     title: row.title,
                     publisher: row.publisher,

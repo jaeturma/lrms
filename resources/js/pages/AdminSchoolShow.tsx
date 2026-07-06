@@ -25,6 +25,26 @@ type LearningResource = {
     quantity_delivered?: number | null;
     quantity_with_issue_defect?: number | null;
     remarks?: string | null;
+    inventory?: {
+        available: number;
+        issued: number;
+        borrowed: number;
+        damaged: number;
+        lost: number;
+        condemned: number;
+    };
+};
+
+type InventoryMovementRow = {
+    id: number;
+    resource_title: string | null;
+    type: string;
+    quantity: number;
+    from_status: string | null;
+    to_status: string | null;
+    notes: string | null;
+    recorded_by: string | null;
+    created_at: string | null;
 };
 
 type EnrollmentRow = {
@@ -38,6 +58,7 @@ type EnrollmentRow = {
 type Props = {
     school: School;
     learningResources: LearningResource[];
+    inventoryMovements: InventoryMovementRow[];
     activeSchoolYear: { id: number; name: string } | null;
     enrollments: EnrollmentRow[];
     generatedEmail?: string;
@@ -47,6 +68,7 @@ type Props = {
 export default function AdminSchoolShow({
     school,
     learningResources,
+    inventoryMovements,
     activeSchoolYear,
     enrollments,
     generatedEmail,
@@ -181,7 +203,7 @@ export default function AdminSchoolShow({
                                         <th className="border-b border-border px-3 py-2">Title</th>
                                         <th className="border-b border-border px-3 py-2">Publisher</th>
                                         <th className="border-b border-border px-3 py-2">Quantity Delivered</th>
-                                        <th className="border-b border-border px-3 py-2">Quantity with Issue/Defect</th>
+                                        <th className="border-b border-border px-3 py-2">Inventory Status</th>
                                         <th className="border-b border-border px-3 py-2">Remarks</th>
                                     </tr>
                                 </thead>
@@ -199,13 +221,69 @@ export default function AdminSchoolShow({
                                             <td className="px-3 py-2">{resource.title ?? '-'}</td>
                                             <td className="px-3 py-2">{resource.publisher}</td>
                                             <td className="px-3 py-2">{resource.quantity_delivered ?? '-'}</td>
-                                            <td className="px-3 py-2">{resource.quantity_with_issue_defect ?? '-'}</td>
+                                            <td className="px-3 py-2 text-muted-foreground">
+                                                {resource.inventory
+                                                    ? [
+                                                          `${resource.inventory.available} available`,
+                                                          resource.inventory.issued > 0 && `${resource.inventory.issued} issued`,
+                                                          resource.inventory.borrowed > 0 && `${resource.inventory.borrowed} borrowed`,
+                                                          resource.inventory.damaged > 0 && `${resource.inventory.damaged} damaged`,
+                                                          resource.inventory.lost > 0 && `${resource.inventory.lost} lost`,
+                                                          resource.inventory.condemned > 0 && `${resource.inventory.condemned} condemned`,
+                                                      ]
+                                                          .filter(Boolean)
+                                                          .join(' · ')
+                                                    : '-'}
+                                            </td>
                                             <td className="px-3 py-2">{resource.remarks ?? '-'}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
+                    </section>
+
+                    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                        <h2 className="mb-4 text-lg font-semibold text-foreground">Recent Inventory Movements</h2>
+                        {inventoryMovements.length === 0 && (
+                            <p className="text-sm text-muted-foreground">No inventory movements recorded yet.</p>
+                        )}
+                        {inventoryMovements.length > 0 && (
+                            <div className="overflow-x-auto rounded-lg border border-border">
+                                <table className="min-w-full border-collapse text-sm">
+                                    <thead className="bg-muted text-left text-foreground">
+                                        <tr>
+                                            <th className="border-b border-border px-3 py-2">Date</th>
+                                            <th className="border-b border-border px-3 py-2">Resource</th>
+                                            <th className="border-b border-border px-3 py-2">Movement</th>
+                                            <th className="border-b border-border px-3 py-2 text-right">Qty</th>
+                                            <th className="border-b border-border px-3 py-2">From → To</th>
+                                            <th className="border-b border-border px-3 py-2">Notes</th>
+                                            <th className="border-b border-border px-3 py-2">Recorded By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {inventoryMovements.map((movement) => (
+                                            <tr key={movement.id} className="border-t border-border">
+                                                <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
+                                                    {movement.created_at ? new Date(movement.created_at).toLocaleString() : '-'}
+                                                </td>
+                                                <td className="px-3 py-2">{movement.resource_title ?? '-'}</td>
+                                                <td className="px-3 py-2 capitalize">{movement.type}</td>
+                                                <td className="px-3 py-2 text-right">{movement.quantity}</td>
+                                                <td className="px-3 py-2 text-muted-foreground">
+                                                    {movement.from_status || movement.to_status
+                                                        ? `${movement.from_status ?? '—'} → ${movement.to_status ?? '—'}`
+                                                        : '—'}
+                                                </td>
+                                                <td className="px-3 py-2 text-muted-foreground">{movement.notes ?? '-'}</td>
+                                                <td className="px-3 py-2 text-muted-foreground">{movement.recorded_by ?? '-'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </section>
                 </div>
             </main>

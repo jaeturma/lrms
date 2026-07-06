@@ -6,6 +6,8 @@ use Database\Factories\LearningResourceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class LearningResource extends Model
 {
@@ -30,5 +32,15 @@ class LearningResource extends Model
     public function learningResourceType(): BelongsTo
     {
         return $this->belongsTo(LearningResourceType::class);
+    }
+
+    public function inventory(): HasOne
+    {
+        return $this->hasOne(LearningResourceInventory::class);
+    }
+
+    public function inventoryMovements(): HasMany
+    {
+        return $this->hasMany(InventoryMovement::class);
     }
 }

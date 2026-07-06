@@ -10,6 +10,7 @@ use App\Http\Resources\SchoolResource;
 use App\Models\Barangay;
 use App\Models\District;
 use App\Models\Enrollment;
+use App\Models\InventoryMovement;
 use App\Models\Municipality;
 use App\Models\School;
 use App\Models\SchoolYear;
@@ -98,7 +99,32 @@ class SchoolManagementController extends Controller
 
     public function show(School $school): Response
     {
-        $school->load(['district', 'municipality', 'barangay', 'learningResources.learningResourceType']);
+        $school->load([
+            'district',
+            'municipality',
+            'barangay',
+            'learningResources.learningResourceType',
+            'learningResources.inventory',
+        ]);
+
+        $inventoryMovements = InventoryMovement::query()
+            ->where('school_id', $school->id)
+            ->with(['learningResource:id,title', 'user:id,name'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get()
+            ->map(fn (InventoryMovement $movement): array => [
+                'id' => $movement->id,
+                'resource_title' => $movement->learningResource?->title,
+                'type' => $movement->type,
+                'quantity' => $movement->quantity,
+                'from_status' => $movement->from_status,
+                'to_status' => $movement->to_status,
+                'notes' => $movement->notes,
+                'recorded_by' => $movement->user?->name,
+                'created_at' => $movement->created_at?->toIso8601String(),
+            ]);
 
         $activeSchoolYear = SchoolYear::active();
 
@@ -121,6 +147,7 @@ class SchoolManagementController extends Controller
         return Inertia::render('AdminSchoolShow', [
             'school' => SchoolResource::make($school)->resolve(),
             'learningResources' => LearningResourceResource::collection($school->learningResources)->resolve(),
+            'inventoryMovements' => $inventoryMovements,
             'activeSchoolYear' => $activeSchoolYear?->only(['id', 'name']),
             'enrollments' => $enrollments,
             'generatedEmail' => session('generatedEmail'),

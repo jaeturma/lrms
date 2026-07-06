@@ -23,6 +23,14 @@ class LearningResourceResource extends JsonResource
             'quantity_with_issue_defect' => $this->quantity_with_issue_defect,
             'remarks' => $this->remarks,
             'publisher' => $this->publisher,
+            'inventory' => $this->whenLoaded('inventory', fn (): array => [
+                'available' => $this->inventory->available,
+                'issued' => $this->inventory->issued,
+                'borrowed' => $this->inventory->borrowed,
+                'damaged' => $this->inventory->damaged,
+                'lost' => $this->inventory->lost,
+                'condemned' => $this->inventory->condemned,
+            ]),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -25,6 +25,7 @@ class StoreLearningResourcesRequest extends FormRequest
     {
         return [
             'resources' => ['required', 'array', 'min:1'],
+            'resources.*.id' => ['nullable', 'integer', Rule::exists('learning_resources', 'id')],
             'resources.*.learning_resource_type_id' => [
                 'required',
                 'integer',

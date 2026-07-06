@@ -16,6 +16,7 @@ use App\Http\Controllers\HomePageController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SchoolDashboardController;
 use App\Http\Controllers\SchoolEnrollmentController;
+use App\Http\Controllers\SchoolInventoryController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomePageController::class)->name('home');
@@ -89,6 +90,8 @@ Route::middleware(['auth', 'role:school'])->group(function (): void {
     Route::put('/school/resources', [SchoolController::class, 'storeLearningResources'])->name('school.resources.store');
     Route::get('/school/enrollment', [SchoolEnrollmentController::class, 'index'])->name('school.enrollment.index');
     Route::put('/school/enrollment', [SchoolEnrollmentController::class, 'store'])->name('school.enrollment.store');
+    Route::get('/school/inventory', [SchoolInventoryController::class, 'index'])->name('school.inventory.index');
+    Route::post('/school/inventory/{learningResource}/movements', [SchoolInventoryController::class, 'storeMovement'])->name('school.inventory.movements.store');
 });
 
 require __DIR__.'/settings.php';

@@ -14,6 +14,7 @@ use App\Models\District;
 use App\Models\Municipality;
 use App\Models\School;
 use App\Services\AppSettingsService;
+use App\Services\LearningResourceInventoryService;
 use App\Services\SchoolActivationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -258,34 +259,60 @@ class SchoolController extends Controller
         Config::set('mail.from.name', $smtp['smtp_from_name'] ?: config('mail.from.name'));
     }
 
-    public function storeLearningResources(StoreLearningResourcesRequest $request): RedirectResponse|JsonResponse
-    {
+    public function storeLearningResources(
+        StoreLearningResourcesRequest $request,
+        LearningResourceInventoryService $inventoryService,
+    ): RedirectResponse|JsonResponse {
         $school = $request->user()?->school;
-        $resources = collect($request->validated('resources'))
-            ->map(fn (array $resource): array => [
-                'learning_resource_type_id' => $resource['learning_resource_type_id'],
-                'title' => $resource['title'],
-                'publisher' => $resource['publisher'],
-                'quantity_delivered' => $resource['quantity_delivered'],
-                'quantity_with_issue_defect' => $resource['quantity_with_issue_defect'],
-                'remarks' => $resource['remarks'] ?? null,
-            ])
-            ->values()
-            ->all();
 
         abort_if(! $school, 403);
 
-        DB::transaction(function () use ($school, $resources): void {
-            $school->learningResources()->delete();
+        $user = $request->user();
+        $resources = collect($request->validated('resources'));
+        $existingIds = $school->learningResources()->pluck('id');
+        $submittedIds = $resources->pluck('id')->filter()->map(fn (mixed $id): int => (int) $id);
 
-            $school->learningResources()->createMany($resources);
+        if ($submittedIds->diff($existingIds)->isNotEmpty()) {
+            abort(403);
+        }
+
+        DB::transaction(function () use ($school, $resources, $existingIds, $submittedIds, $user, $inventoryService): void {
+            $school->learningResources()
+                ->whereIn('id', $existingIds->diff($submittedIds))
+                ->get()
+                ->each(fn ($resource) => $resource->delete());
+
+            foreach ($resources as $payload) {
+                $attributes = [
+                    'learning_resource_type_id' => $payload['learning_resource_type_id'],
+                    'title' => $payload['title'],
+                    'publisher' => $payload['publisher'],
+                    'quantity_delivered' => $payload['quantity_delivered'],
+                    'quantity_with_issue_defect' => $payload['quantity_with_issue_defect'],
+                    'remarks' => $payload['remarks'] ?? null,
+                ];
+
+                if (! empty($payload['id'])) {
+                    $resource = $school->learningResources()->with('inventory')->findOrFail((int) $payload['id']);
+                    $previousDelivered = (int) $resource->quantity_delivered;
+                    $previousDamaged = min((int) $resource->quantity_with_issue_defect, $previousDelivered);
+
+                    $resource->update($attributes);
+                    $inventoryService->applyEncodingUpdate($resource, $previousDelivered, $previousDamaged, $user);
+
+                    continue;
+                }
+
+                $resource = $school->learningResources()->create($attributes);
+                $inventoryService->initialize($resource, $user);
+            }
         });
 
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Learning resources saved successfully.',
                 'resources' => LearningResourceResource::collection(
-                    $school->learningResources()->with('learningResourceType')->latest()->get(),
+                    $school->learningResources()->with(['learningResourceType', 'inventory'])->latest()->get(),
                 ),
             ]);
         }

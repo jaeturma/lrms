@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     BookText,
+    Boxes,
     CalendarRange,
     Cog,
     GraduationCap,
@@ -136,6 +137,12 @@ export function AppSidebar() {
             href: '/school/learning-resources',
             icon: BookText,
             iconClassName: 'text-indigo-600',
+        },
+        {
+            title: 'Inventory',
+            href: '/school/inventory',
+            icon: Boxes,
+            iconClassName: 'text-emerald-600',
         },
         {
             title: 'Enrollment',
