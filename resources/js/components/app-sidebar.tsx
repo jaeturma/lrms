@@ -1,13 +1,16 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     BookText,
+    CalendarRange,
     Cog,
+    GraduationCap,
     LayoutGrid,
     MapPinned,
     Map,
     MapPin,
     School,
     Settings,
+    Users,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
@@ -68,6 +71,18 @@ const adminNavItems: NavItem[] = [
         iconClassName: 'text-violet-600',
     },
     {
+        title: 'School Years',
+        href: '/app/admin/school-years',
+        icon: CalendarRange,
+        iconClassName: 'text-cyan-600',
+    },
+    {
+        title: 'Grade Levels',
+        href: '/app/admin/grade-levels',
+        icon: GraduationCap,
+        iconClassName: 'text-fuchsia-600',
+    },
+    {
         title: 'Settings',
         href: '/app/admin/settings',
         icon: Cog,
@@ -121,6 +136,12 @@ export function AppSidebar() {
             href: '/school/learning-resources',
             icon: BookText,
             iconClassName: 'text-indigo-600',
+        },
+        {
+            title: 'Enrollment',
+            href: '/school/enrollment',
+            icon: Users,
+            iconClassName: 'text-cyan-600',
         },
         ...(updateSchoolHref
             ? [

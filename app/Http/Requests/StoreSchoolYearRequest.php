@@ -2,12 +2,11 @@
 
 namespace App\Http\Requests;
 
-use App\Models\LearningResourceType;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreLearningResourceTypeRequest extends FormRequest
+class StoreSchoolYearRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,8 +24,19 @@ class StoreLearningResourceTypeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255', Rule::unique('learning_resource_types', 'name')],
-            'category' => ['required', 'string', Rule::in(LearningResourceType::CATEGORIES)],
+            'name' => ['required', 'string', 'max:20', 'regex:/^\d{4}-\d{4}$/', Rule::unique('school_years', 'name')],
+            'starts_on' => ['nullable', 'date'],
+            'ends_on' => ['nullable', 'date', 'after_or_equal:starts_on'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'name.regex' => 'The school year must use the format YYYY-YYYY, e.g. 2026-2027.',
         ];
     }
 }

@@ -5,14 +5,17 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminLocationController;
 use App\Http\Controllers\Admin\AppSettingsController;
 use App\Http\Controllers\Admin\ContentManagementController;
+use App\Http\Controllers\Admin\GradeLevelController;
 use App\Http\Controllers\Admin\LearningMaterialsController;
 use App\Http\Controllers\Admin\LearningResourceTypeController;
 use App\Http\Controllers\Admin\SchoolImportController;
 use App\Http\Controllers\Admin\SchoolManagementController;
+use App\Http\Controllers\Admin\SchoolYearController;
 use App\Http\Controllers\ContentPageController;
 use App\Http\Controllers\HomePageController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SchoolDashboardController;
+use App\Http\Controllers\SchoolEnrollmentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomePageController::class)->name('home');
@@ -47,6 +50,15 @@ Route::prefix('/app/admin')
         Route::post('/locations/{type}', [AdminLocationController::class, 'store'])->name('admin.locations.store');
         Route::put('/locations/{type}/{id}', [AdminLocationController::class, 'update'])->name('admin.locations.update');
         Route::delete('/locations/{type}/{id}', [AdminLocationController::class, 'destroy'])->name('admin.locations.destroy');
+        Route::get('/school-years', [SchoolYearController::class, 'index'])->name('admin.school-years.index');
+        Route::post('/school-years', [SchoolYearController::class, 'store'])->name('admin.school-years.store');
+        Route::put('/school-years/{schoolYear}', [SchoolYearController::class, 'update'])->name('admin.school-years.update');
+        Route::post('/school-years/{schoolYear}/activate', [SchoolYearController::class, 'activate'])->name('admin.school-years.activate');
+        Route::delete('/school-years/{schoolYear}', [SchoolYearController::class, 'destroy'])->name('admin.school-years.destroy');
+        Route::get('/grade-levels', [GradeLevelController::class, 'index'])->name('admin.grade-levels.index');
+        Route::post('/grade-levels', [GradeLevelController::class, 'store'])->name('admin.grade-levels.store');
+        Route::put('/grade-levels/{gradeLevel}', [GradeLevelController::class, 'update'])->name('admin.grade-levels.update');
+        Route::delete('/grade-levels/{gradeLevel}', [GradeLevelController::class, 'destroy'])->name('admin.grade-levels.destroy');
         Route::get('/learning-resource-types', [LearningResourceTypeController::class, 'index'])->name('admin.learning-resource-types.index');
         Route::get('/learning-materials', [LearningMaterialsController::class, 'index'])->name('admin.learning-materials.index');
         Route::get('/settings', [AppSettingsController::class, 'edit'])->name('admin.settings.edit');
@@ -75,6 +87,8 @@ Route::middleware(['auth', 'role:school'])->group(function (): void {
     Route::get('/dashboard', SchoolDashboardController::class)->name('dashboard');
     Route::get('/school/learning-resources', [SchoolDashboardController::class, 'learningResources'])->name('school.resources.index');
     Route::put('/school/resources', [SchoolController::class, 'storeLearningResources'])->name('school.resources.store');
+    Route::get('/school/enrollment', [SchoolEnrollmentController::class, 'index'])->name('school.enrollment.index');
+    Route::put('/school/enrollment', [SchoolEnrollmentController::class, 'store'])->name('school.enrollment.store');
 });
 
 require __DIR__.'/settings.php';

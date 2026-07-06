@@ -31,7 +31,9 @@ type Props = {
         activated_schools: number;
         pending_schools: number;
         total_learning_resources: number;
+        total_learners: number;
     };
+    activeSchoolYear: { id: number; name: string } | null;
     districts: District[];
     filters: {
         search?: string;
@@ -43,6 +45,7 @@ type Props = {
 
 export default function AdminDashboard({
     stats,
+    activeSchoolYear,
     districts,
     filters,
     reportsByDistrict,
@@ -119,7 +122,7 @@ export default function AdminDashboard({
                     </div>
                 </header>
 
-                <section className="grid gap-4 md:grid-cols-4">
+                <section className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
                     <StatCard
                         label="Total Schools"
                         value={stats.total_schools}
@@ -139,6 +142,11 @@ export default function AdminDashboard({
                         label="Total Resources"
                         value={stats.total_learning_resources}
                         accentClassName="border-fuchsia-300/70 bg-gradient-to-br from-fuchsia-50 to-pink-100 text-fuchsia-900 dark:border-fuchsia-800 dark:from-fuchsia-950/45 dark:to-pink-950/45 dark:text-fuchsia-100"
+                    />
+                    <StatCard
+                        label={activeSchoolYear ? `Learners · SY ${activeSchoolYear.name}` : 'Learners (No Active SY)'}
+                        value={stats.total_learners}
+                        accentClassName="border-violet-300/70 bg-gradient-to-br from-violet-50 to-indigo-100 text-violet-900 dark:border-violet-800 dark:from-violet-950/45 dark:to-indigo-950/45 dark:text-violet-100"
                     />
                 </section>
 

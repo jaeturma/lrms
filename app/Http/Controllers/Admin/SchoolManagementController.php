@@ -9,8 +9,10 @@ use App\Http\Resources\LearningResourceResource;
 use App\Http\Resources\SchoolResource;
 use App\Models\Barangay;
 use App\Models\District;
+use App\Models\Enrollment;
 use App\Models\Municipality;
 use App\Models\School;
+use App\Models\SchoolYear;
 use App\Services\SchoolActivationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -98,9 +100,29 @@ class SchoolManagementController extends Controller
     {
         $school->load(['district', 'municipality', 'barangay', 'learningResources.learningResourceType']);
 
+        $activeSchoolYear = SchoolYear::active();
+
+        $enrollments = $activeSchoolYear
+            ? $school->enrollments()
+                ->where('school_year_id', $activeSchoolYear->id)
+                ->with('gradeLevel:id,name,sort_order')
+                ->get()
+                ->sortBy(fn (Enrollment $enrollment): int => $enrollment->gradeLevel?->sort_order ?? 0)
+                ->values()
+                ->map(fn (Enrollment $enrollment): array => [
+                    'id' => $enrollment->id,
+                    'grade_level' => $enrollment->gradeLevel?->name,
+                    'male_count' => $enrollment->male_count,
+                    'female_count' => $enrollment->female_count,
+                    'total' => $enrollment->totalLearners(),
+                ])
+            : collect();
+
         return Inertia::render('AdminSchoolShow', [
             'school' => SchoolResource::make($school)->resolve(),
             'learningResources' => LearningResourceResource::collection($school->learningResources)->resolve(),
+            'activeSchoolYear' => $activeSchoolYear?->only(['id', 'name']),
+            'enrollments' => $enrollments,
             'generatedEmail' => session('generatedEmail'),
             'generatedPassword' => session('generatedPassword'),
         ]);

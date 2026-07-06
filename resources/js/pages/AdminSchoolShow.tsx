@@ -27,14 +27,32 @@ type LearningResource = {
     remarks?: string | null;
 };
 
+type EnrollmentRow = {
+    id: number;
+    grade_level: string | null;
+    male_count: number;
+    female_count: number;
+    total: number;
+};
+
 type Props = {
     school: School;
     learningResources: LearningResource[];
+    activeSchoolYear: { id: number; name: string } | null;
+    enrollments: EnrollmentRow[];
     generatedEmail?: string;
     generatedPassword?: string;
 };
 
-export default function AdminSchoolShow({ school, learningResources, generatedEmail, generatedPassword }: Props) {
+export default function AdminSchoolShow({
+    school,
+    learningResources,
+    activeSchoolYear,
+    enrollments,
+    generatedEmail,
+    generatedPassword,
+}: Props) {
+    const totalLearners = enrollments.reduce((total, enrollment) => total + enrollment.total, 0);
     const municipalityBarangay = `${school.municipality ?? '-'} - ${school.barangay ?? '-'}`;
 
     const manuallyActivate = () => {
@@ -108,6 +126,49 @@ export default function AdminSchoolShow({ school, learningResources, generatedEm
                                 value={school.activation_requested_at ? 'Requested' : 'No request yet'}
                             />
                         </div>
+                    </section>
+
+                    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                            <h2 className="text-lg font-semibold text-foreground">
+                                Enrollment{activeSchoolYear ? ` · SY ${activeSchoolYear.name}` : ''}
+                            </h2>
+                            {enrollments.length > 0 && (
+                                <p className="text-sm text-muted-foreground">
+                                    Total learners: <span className="font-semibold text-foreground">{totalLearners.toLocaleString()}</span>
+                                </p>
+                            )}
+                        </div>
+                        {!activeSchoolYear && (
+                            <p className="text-sm text-muted-foreground">No active school year is set.</p>
+                        )}
+                        {activeSchoolYear && enrollments.length === 0 && (
+                            <p className="text-sm text-muted-foreground">No enrollment encoded for the active school year yet.</p>
+                        )}
+                        {enrollments.length > 0 && (
+                            <div className="overflow-x-auto rounded-lg border border-border">
+                                <table className="min-w-full border-collapse text-sm">
+                                    <thead className="bg-muted text-left text-foreground">
+                                        <tr>
+                                            <th className="border-b border-border px-3 py-2">Grade Level</th>
+                                            <th className="border-b border-border px-3 py-2">Male</th>
+                                            <th className="border-b border-border px-3 py-2">Female</th>
+                                            <th className="border-b border-border px-3 py-2">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {enrollments.map((enrollment) => (
+                                            <tr key={enrollment.id} className="border-t border-border">
+                                                <td className="px-3 py-2">{enrollment.grade_level ?? '-'}</td>
+                                                <td className="px-3 py-2">{enrollment.male_count.toLocaleString()}</td>
+                                                <td className="px-3 py-2">{enrollment.female_count.toLocaleString()}</td>
+                                                <td className="px-3 py-2 font-medium">{enrollment.total.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </section>
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">

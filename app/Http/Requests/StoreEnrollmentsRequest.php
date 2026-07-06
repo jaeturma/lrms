@@ -2,12 +2,11 @@
 
 namespace App\Http\Requests;
 
-use App\Models\LearningResourceType;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreLearningResourceTypeRequest extends FormRequest
+class StoreEnrollmentsRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,8 +24,15 @@ class StoreLearningResourceTypeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255', Rule::unique('learning_resource_types', 'name')],
-            'category' => ['required', 'string', Rule::in(LearningResourceType::CATEGORIES)],
+            'enrollments' => ['required', 'array'],
+            'enrollments.*.grade_level_id' => [
+                'required',
+                'integer',
+                'distinct',
+                Rule::exists('grade_levels', 'id')->where('is_active', true),
+            ],
+            'enrollments.*.male_count' => ['required', 'integer', 'min:0', 'max:100000'],
+            'enrollments.*.female_count' => ['required', 'integer', 'min:0', 'max:100000'],
         ];
     }
 }

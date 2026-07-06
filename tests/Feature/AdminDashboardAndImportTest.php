@@ -155,6 +155,7 @@ test('admin can manage learning material types', function () {
         ->actingAs($admin)
         ->post(route('admin.learning-resource-types.store'), [
             'name' => 'Digital Module',
+            'category' => 'Digital',
         ]);
 
     $createResponse->assertRedirect();
@@ -162,10 +163,13 @@ test('admin can manage learning material types', function () {
 
     $type = LearningResourceType::where('name', 'Digital Module')->firstOrFail();
 
+    expect($type->category)->toBe('Digital');
+
     $updateResponse = $this
         ->actingAs($admin)
         ->put(route('admin.learning-resource-types.update', $type), [
             'name' => 'Digital Module',
+            'category' => 'Digital',
             'is_active' => false,
         ]);
 

@@ -77,4 +77,9 @@ class School extends Model
     {
         return $this->hasMany(LearningResource::class);
     }
+
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class);
+    }
 }

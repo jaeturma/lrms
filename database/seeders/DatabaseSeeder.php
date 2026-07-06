@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             RoleUserSeeder::class,
             LearningResourceTypeSeeder::class,
+            GradeLevelSeeder::class,
         ]);
     }
 }

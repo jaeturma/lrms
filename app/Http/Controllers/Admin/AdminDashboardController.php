@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\District;
+use App\Models\Enrollment;
 use App\Models\LearningResource;
 use App\Models\School;
+use App\Models\SchoolYear;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -53,13 +56,21 @@ class AdminDashboardController extends Controller
                 'learning_resources_count' => $school->learning_resources_count,
             ]);
 
+        $activeSchoolYear = SchoolYear::active();
+
         return Inertia::render('AdminDashboard', [
             'stats' => [
                 'total_schools' => School::count(),
                 'activated_schools' => School::where('is_activated', true)->count(),
                 'pending_schools' => School::where('is_activated', false)->count(),
                 'total_learning_resources' => LearningResource::count(),
+                'total_learners' => $activeSchoolYear
+                    ? (int) Enrollment::query()
+                        ->where('school_year_id', $activeSchoolYear->id)
+                        ->sum(DB::raw('male_count + female_count'))
+                    : 0,
             ],
+            'activeSchoolYear' => $activeSchoolYear?->only(['id', 'name']),
             'districts' => District::query()->orderBy('name')->get(['id', 'name']),
             'filters' => [
                 'search' => $search,

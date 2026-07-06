@@ -18,7 +18,8 @@ class LearningResourceTypeController extends Controller
         return Inertia::render('AdminLearningResourceTypes', [
             'learningResourceTypes' => LearningResourceType::query()
                 ->orderBy('name')
-                ->get(['id', 'name', 'is_active']),
+                ->get(['id', 'name', 'category', 'is_active']),
+            'categories' => LearningResourceType::CATEGORIES,
         ]);
     }
 
@@ -26,6 +27,7 @@ class LearningResourceTypeController extends Controller
     {
         LearningResourceType::query()->create([
             'name' => $request->validated('name'),
+            'category' => $request->validated('category'),
             'is_active' => true,
         ]);
 
@@ -41,6 +43,7 @@ class LearningResourceTypeController extends Controller
                 'max:255',
                 Rule::unique('learning_resource_types', 'name')->ignore($learningResourceType->id),
             ],
+            'category' => ['required', 'string', Rule::in(LearningResourceType::CATEGORIES)],
             'is_active' => ['required', 'boolean'],
         ]);
 

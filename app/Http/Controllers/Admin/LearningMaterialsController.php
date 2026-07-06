@@ -15,7 +15,7 @@ class LearningMaterialsController extends Controller
         $search = $request->string('search')->toString();
 
         $materials = LearningResource::query()
-            ->with(['school:id,school_id,school_name', 'learningResourceType:id,name'])
+            ->with(['school:id,school_id,school_name', 'learningResourceType:id,name,category'])
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($nestedQuery) use ($search): void {
                     $nestedQuery
@@ -37,6 +37,7 @@ class LearningMaterialsController extends Controller
             ->through(fn (LearningResource $resource): array => [
                 'id' => $resource->id,
                 'resource_type' => $resource->learningResourceType?->name,
+                'category' => $resource->learningResourceType?->category,
                 'title' => $resource->title,
                 'publisher' => $resource->publisher,
                 'quantity_delivered' => $resource->quantity_delivered,
