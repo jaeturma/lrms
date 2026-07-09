@@ -177,6 +177,7 @@ function TwoFactorVerificationStep({
                             <InputOTP
                                 id="otp"
                                 name="code"
+                                aria-label="Verification code"
                                 maxLength={OTP_MAX_LENGTH}
                                 onChange={setCode}
                                 disabled={processing}

@@ -44,8 +44,12 @@ export default function AdminLearningResourceTypes({ learningResourceTypes, cate
         );
     };
 
-    const deleteType = (id: number) => {
-        router.delete(`/app/admin/learning-resource-types/${id}`, {
+    const deleteType = (type: LearningResourceType) => {
+        if (!window.confirm(`Remove learning material type "${type.name}"? This cannot be undone.`)) {
+            return;
+        }
+
+        router.delete(`/app/admin/learning-resource-types/${type.id}`, {
             preserveScroll: true,
         });
     };
@@ -120,7 +124,7 @@ export default function AdminLearningResourceTypes({ learningResourceTypes, cate
                                             variant="outline"
                                             size="sm"
                                             className="border-red-300 text-red-700 hover:bg-red-50"
-                                            onClick={() => deleteType(type.id)}
+                                            onClick={() => deleteType(type)}
                                         >
                                             <Trash2 className="h-3.5 w-3.5" />
                                             Delete

@@ -53,8 +53,12 @@ export default function AdminGradeLevels({ gradeLevels }: Props) {
         );
     };
 
-    const deleteGradeLevel = (id: number) => {
-        router.delete(`/app/admin/grade-levels/${id}`, {
+    const deleteGradeLevel = (gradeLevel: GradeLevel) => {
+        if (!window.confirm(`Remove grade level "${gradeLevel.name}"? This cannot be undone.`)) {
+            return;
+        }
+
+        router.delete(`/app/admin/grade-levels/${gradeLevel.id}`, {
             preserveScroll: true,
             onSuccess: () => toast.success('Grade level removed.'),
         });
@@ -139,7 +143,7 @@ export default function AdminGradeLevels({ gradeLevels }: Props) {
                                             variant="outline"
                                             size="sm"
                                             className="border-red-300 text-red-700 hover:bg-red-50"
-                                            onClick={() => deleteGradeLevel(gradeLevel.id)}
+                                            onClick={() => deleteGradeLevel(gradeLevel)}
                                         >
                                             <Trash2 className="h-3.5 w-3.5" />
                                         </Button>

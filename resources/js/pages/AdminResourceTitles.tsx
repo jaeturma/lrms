@@ -1,10 +1,12 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Pencil, Power, Trash2 } from 'lucide-react';
 import { FormEvent, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { EmptyTableRow } from '@/components/empty-state';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Pagination } from '@/components/pagination';
+import { RowActions } from '@/components/row-actions';
 import { SearchInput } from '@/components/search-input';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -151,7 +153,10 @@ export default function AdminResourceTitles({ filters, resourceTitles, resourceT
         const options = {
             preserveScroll: true,
             forceFormData: true,
-            onSuccess: resetForm,
+            onSuccess: () => {
+                resetForm();
+                toast.success(editingId ? 'Resource title updated.' : 'Resource title added to catalog.');
+            },
         };
 
         if (editingId) {
@@ -215,13 +220,19 @@ export default function AdminResourceTitles({ filters, resourceTitles, resourceT
                 media_url: row.media_url,
                 is_active: !row.is_active,
             },
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: () => toast.success(row.is_active ? 'Resource title deactivated.' : 'Resource title activated.'),
+            },
         );
     };
 
     const removeTitle = (row: ResourceTitleRow) => {
         if (confirm(`Remove "${row.title}" from the catalog?`)) {
-            router.delete(`/app/admin/resource-titles/${row.id}`, { preserveScroll: true });
+            router.delete(`/app/admin/resource-titles/${row.id}`, {
+                preserveScroll: true,
+                onSuccess: () => toast.success('Resource title removed.'),
+            });
         }
     };
 
@@ -558,31 +569,25 @@ export default function AdminResourceTitles({ filters, resourceTitles, resourceT
                                                     {row.is_active ? 'active' : 'inactive'}
                                                 </StatusBadge>
                                             </td>
-                                            <td className="px-3 py-2">
-                                                <div className="flex justify-end gap-1.5">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => startEditing(row)}
-                                                        className="rounded-md border border-border px-2 py-1 text-xs text-foreground hover:bg-muted"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toggleActive(row)}
-                                                        className="rounded-md border border-border px-2 py-1 text-xs text-foreground hover:bg-muted"
-                                                    >
-                                                        {row.is_active ? 'Deactivate' : 'Activate'}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeTitle(row)}
-                                                        disabled={row.schools_using > 0}
-                                                        className="rounded-md border border-border px-2 py-1 text-xs text-destructive hover:bg-muted disabled:opacity-40"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </div>
+                                            <td className="px-3 py-2 text-right">
+                                                <RowActions
+                                                    label={`Actions for ${row.title}`}
+                                                    actions={[
+                                                        { label: 'Edit', icon: Pencil, onSelect: () => startEditing(row) },
+                                                        {
+                                                            label: row.is_active ? 'Deactivate' : 'Activate',
+                                                            icon: Power,
+                                                            onSelect: () => toggleActive(row),
+                                                        },
+                                                        {
+                                                            label: 'Delete',
+                                                            icon: Trash2,
+                                                            variant: 'destructive',
+                                                            disabled: row.schools_using > 0,
+                                                            onSelect: () => removeTitle(row),
+                                                        },
+                                                    ]}
+                                                />
                                             </td>
                                         </tr>
                                     ))}

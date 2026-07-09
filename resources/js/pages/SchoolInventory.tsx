@@ -1,6 +1,10 @@
 import { Head, useForm } from '@inertiajs/react';
 import { ArrowLeftRight, History, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { EmptyTableRow } from '@/components/empty-state';
+import { RowActions } from '@/components/row-actions';
+import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -92,7 +96,10 @@ export default function SchoolInventory({ resources, movements, transitionSource
 
         post(`/school/inventory/${movementResource.id}/movements`, {
             preserveScroll: true,
-            onSuccess: () => setMovementResource(null),
+            onSuccess: () => {
+                setMovementResource(null);
+                toast.success('Movement recorded.');
+            },
         });
     };
 
@@ -137,54 +144,52 @@ export default function SchoolInventory({ resources, movements, transitionSource
                             </thead>
                             <tbody>
                                 {resources.length === 0 && (
-                                    <tr>
-                                        <td className="px-3 py-6 text-center text-muted-foreground" colSpan={9}>
-                                            No learning resources encoded yet. Add resources on the Learning Resources page first.
-                                        </td>
-                                    </tr>
+                                    <EmptyTableRow
+                                        colSpan={9}
+                                        message="No learning resources encoded yet. Add resources on the Learning Resources page first."
+                                    />
                                 )}
                                 {resources.map((resource) => (
                                     <tr key={resource.id} className="border-t border-border">
                                         <td className="px-3 py-2 font-medium text-foreground">{resource.title ?? '-'}</td>
                                         <td className="px-3 py-2 text-muted-foreground">{resource.resource_type ?? '-'}</td>
-                                        <td className="px-3 py-2 text-right font-semibold text-emerald-600 dark:text-emerald-400">
-                                            {resource.inventory.available}
+                                        <td className="px-3 py-2 text-right">
+                                            <StatusBadge tone="success">{resource.inventory.available}</StatusBadge>
                                         </td>
-                                        <td className="px-3 py-2 text-right">{resource.inventory.issued}</td>
-                                        <td className="px-3 py-2 text-right">{resource.inventory.borrowed}</td>
-                                        <td className="px-3 py-2 text-right text-amber-600 dark:text-amber-400">
-                                            {resource.inventory.damaged}
+                                        <td className="px-3 py-2 text-right">
+                                            <StatusBadge tone="info">{resource.inventory.issued}</StatusBadge>
                                         </td>
-                                        <td className="px-3 py-2 text-right text-red-600 dark:text-red-400">
-                                            {resource.inventory.lost}
+                                        <td className="px-3 py-2 text-right">
+                                            <StatusBadge tone="accent">{resource.inventory.borrowed}</StatusBadge>
                                         </td>
-                                        <td className="px-3 py-2 text-right text-muted-foreground">
-                                            {resource.inventory.condemned}
+                                        <td className="px-3 py-2 text-right">
+                                            <StatusBadge tone="warning">{resource.inventory.damaged}</StatusBadge>
+                                        </td>
+                                        <td className="px-3 py-2 text-right">
+                                            <StatusBadge tone="danger">{resource.inventory.lost}</StatusBadge>
+                                        </td>
+                                        <td className="px-3 py-2 text-right">
+                                            <StatusBadge tone="neutral">{resource.inventory.condemned}</StatusBadge>
                                         </td>
                                         <td className="px-3 py-2">
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => openMovementDialog(resource)}
-                                                >
-                                                    <ArrowLeftRight className="h-3.5 w-3.5" />
-                                                    Record
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        setHistoryResourceId(
-                                                            historyResourceId === resource.id ? null : resource.id,
-                                                        )
-                                                    }
-                                                >
-                                                    <History className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
+                                            <RowActions
+                                                label={`Actions for ${resource.title ?? 'resource'}`}
+                                                actions={[
+                                                    {
+                                                        label: 'Record Movement',
+                                                        icon: ArrowLeftRight,
+                                                        onSelect: () => openMovementDialog(resource),
+                                                    },
+                                                    {
+                                                        label: 'View History',
+                                                        icon: History,
+                                                        onSelect: () =>
+                                                            setHistoryResourceId(
+                                                                historyResourceId === resource.id ? null : resource.id,
+                                                            ),
+                                                    },
+                                                ]}
+                                            />
                                         </td>
                                     </tr>
                                 ))}
@@ -221,11 +226,7 @@ export default function SchoolInventory({ resources, movements, transitionSource
                             </thead>
                             <tbody>
                                 {visibleMovements.length === 0 && (
-                                    <tr>
-                                        <td className="px-3 py-6 text-center text-muted-foreground" colSpan={7}>
-                                            No inventory movements recorded yet.
-                                        </td>
-                                    </tr>
+                                    <EmptyTableRow colSpan={7} message="No inventory movements recorded yet." />
                                 )}
                                 {visibleMovements.map((movement) => (
                                     <tr key={movement.id} className="border-t border-border">

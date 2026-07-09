@@ -1,6 +1,9 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { BookText } from 'lucide-react';
-import { PageHeaderIcon } from '@/components/page-header-icon';
+import { EmptyTableRow } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
+import { Pagination } from '@/components/pagination';
+import { SearchInput } from '@/components/search-input';
 
 type MaterialRow = {
     id: number;
@@ -33,20 +36,12 @@ export default function AdminLearningMaterials({ filters, materials }: Props) {
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-7xl space-y-6">
-                    <header className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <PageHeaderIcon
-                            icon={BookText}
-                            className="bg-indigo-950 text-indigo-400 dark:bg-indigo-900/60 dark:text-indigo-300"
-                        />
-                        <div>
-                            <h1 className="text-2xl font-bold text-foreground">
-                                Learning Materials
-                            </h1>
-                            <p className="text-sm text-muted-foreground">
-                                View all learning materials encoded by schools.
-                            </p>
-                        </div>
-                    </header>
+                    <PageHeader
+                        icon={BookText}
+                        iconClassName="bg-indigo-950 text-indigo-400 dark:bg-indigo-900/60 dark:text-indigo-300"
+                        title="Learning Materials"
+                        description="View all learning materials encoded by schools."
+                    />
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <form
@@ -54,11 +49,11 @@ export default function AdminLearningMaterials({ filters, materials }: Props) {
                             action="/app/admin/learning-materials"
                             className="flex flex-wrap gap-2"
                         >
-                            <input
+                            <SearchInput
                                 name="search"
                                 defaultValue={filters.search ?? ''}
                                 placeholder="Search school, type, title, or publisher"
-                                className="h-10 min-w-72 rounded-md border border-input bg-background px-3 text-sm"
+                                containerClassName="min-w-72"
                             />
                             <button
                                 type="submit"
@@ -85,14 +80,7 @@ export default function AdminLearningMaterials({ filters, materials }: Props) {
                                 </thead>
                                 <tbody>
                                     {materials.data.length === 0 && (
-                                        <tr>
-                                            <td
-                                                className="px-3 py-6 text-center text-muted-foreground"
-                                                colSpan={7}
-                                            >
-                                                No learning materials found.
-                                            </td>
-                                        </tr>
+                                        <EmptyTableRow colSpan={7} message="No learning materials found." />
                                     )}
                                     {materials.data.map((material) => (
                                         <tr key={material.id} className="border-t border-border">
@@ -116,26 +104,7 @@ export default function AdminLearningMaterials({ filters, materials }: Props) {
                             </table>
                         </div>
 
-                        {materials.links.length > 3 && (
-                            <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                                {materials.links.map((link, index) => (
-                                    <span key={index}>
-                                        {link.url ? (
-                                            <Link
-                                                href={link.url}
-                                                className={`rounded border px-3 py-1 ${link.active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground'}`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        ) : (
-                                            <span
-                                                className="rounded border border-border bg-card px-3 py-1 text-muted-foreground"
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        )}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                        <Pagination links={materials.links} className="mt-4" />
                     </section>
                 </div>
             </main>

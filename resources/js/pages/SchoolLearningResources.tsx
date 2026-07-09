@@ -1,6 +1,8 @@
 import { Head } from '@inertiajs/react';
 import { Download, Eye, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { EmptyTableRow } from '@/components/empty-state';
+import { RowActions } from '@/components/row-actions';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -332,11 +334,7 @@ export default function SchoolLearningResources({ learningResources, learningRes
                             </thead>
                             <tbody>
                                 {rows.length === 0 && (
-                                    <tr>
-                                        <td className="px-3 py-6 text-center text-muted-foreground" colSpan={5}>
-                                            No learning resources yet. Click Add Entry to create one.
-                                        </td>
-                                    </tr>
+                                    <EmptyTableRow colSpan={5} message="No learning resources yet. Click Add Entry to create one." />
                                 )}
                                 {paginatedRows.map((row, index) => {
                                     const absoluteIndex = pageStart + index;
@@ -363,23 +361,14 @@ export default function SchoolLearningResources({ learningResources, learningRes
                                             <td className="px-3 py-2">{row.quantity_delivered}</td>
                                             <td className="px-3 py-2">{row.quantity_with_issue_defect}</td>
                                             <td className="px-3 py-2">
-                                                <div className="flex gap-2">
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="border-sky-300 text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-400 dark:hover:bg-sky-950"
-                                                        title="View details"
-                                                        onClick={() => openViewDialog(row)}
-                                                    >
-                                                        <Eye className="h-3.5 w-3.5" />
-                                                    </Button>
+                                                <div className="flex items-center justify-end gap-2">
                                                     {row.attachment_url && (
                                                         <Button
                                                             type="button"
                                                             variant="outline"
                                                             size="sm"
                                                             className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
+                                                            aria-label={`Download attachment for ${row.title}`}
                                                             title="Download attachment"
                                                             asChild
                                                         >
@@ -388,26 +377,23 @@ export default function SchoolLearningResources({ learningResources, learningRes
                                                             </a>
                                                         </Button>
                                                     )}
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950"
-                                                        title="Edit entry"
-                                                        onClick={() => openEditDialog(absoluteIndex)}
-                                                    >
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
-                                                        title="Delete entry"
-                                                        onClick={() => removeRow(absoluteIndex)}
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
+                                                    <RowActions
+                                                        label={`Actions for ${row.title}`}
+                                                        actions={[
+                                                            { label: 'View', icon: Eye, onSelect: () => openViewDialog(row) },
+                                                            {
+                                                                label: 'Edit',
+                                                                icon: Pencil,
+                                                                onSelect: () => openEditDialog(absoluteIndex),
+                                                            },
+                                                            {
+                                                                label: 'Delete',
+                                                                icon: Trash2,
+                                                                variant: 'destructive',
+                                                                onSelect: () => removeRow(absoluteIndex),
+                                                            },
+                                                        ]}
+                                                    />
                                                 </div>
                                             </td>
                                         </tr>

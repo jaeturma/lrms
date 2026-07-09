@@ -3,6 +3,7 @@ import { Cog } from 'lucide-react';
 import type { ReactNode } from 'react';
 import InputError from '@/components/input-error';
 import { PageHeaderIcon } from '@/components/page-header-icon';
+import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -179,7 +180,11 @@ export default function AdminAppSettings({ settings }: Props) {
                                 <Input value={data.smtp_username} onChange={(event) => setData('smtp_username', event.target.value)} placeholder="your@gmail.com" />
                             </Field>
                             <Field label="SMTP Password / App Password" error={errors.smtp_password}>
-                                <Input type="password" value={data.smtp_password} onChange={(event) => setData('smtp_password', event.target.value)} />
+                                <PasswordInput
+                                    id="smtp_password"
+                                    value={data.smtp_password}
+                                    onChange={(event) => setData('smtp_password', event.target.value)}
+                                />
                             </Field>
                             <Field label="Encryption" error={errors.smtp_encryption}>
                                 <select
