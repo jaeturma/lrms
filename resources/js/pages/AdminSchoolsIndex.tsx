@@ -1,8 +1,13 @@
 import { Head, Link, router } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Check, Eye, Pencil, School, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { DataTable } from '@/components/data-table';
-import { PageHeaderIcon } from '@/components/page-header-icon';
+import { PageHeader } from '@/components/page-header';
+import { Pagination } from '@/components/pagination';
+import { SearchInput } from '@/components/search-input';
+import { StatusBadge } from '@/components/status-badge';
+import type { StatusTone } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 
 type District = {
@@ -35,13 +40,28 @@ type Props = {
     schools: Paginator<SchoolRow>;
 };
 
+function schoolStatusTone(row: SchoolRow): StatusTone {
+    if (row.is_activated) {
+        return 'success';
+    }
+
+    if (row.activation_requested_at) {
+        return 'info';
+    }
+
+    return 'warning';
+}
+
 export default function AdminSchoolsIndex({ districts, filters, schools }: Props) {
     const deleteSchool = (schoolId: string) => {
         if (!window.confirm('Delete this school record? This cannot be undone.')) {
             return;
         }
 
-        router.delete(`/app/admin/schools/${schoolId}`, { preserveScroll: true });
+        router.delete(`/app/admin/schools/${schoolId}`, {
+            preserveScroll: true,
+            onSuccess: () => toast.success('School removed.'),
+        });
     };
 
     const columns: ColumnDef<SchoolRow>[] = [
@@ -58,19 +78,13 @@ export default function AdminSchoolsIndex({ districts, filters, schools }: Props
             accessorKey: 'is_activated',
             header: 'Status',
             cell: ({ row }) => (
-                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                    row.original.is_activated
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : row.original.activation_requested_at
-                          ? 'bg-blue-100 text-blue-700'
-                        : 'bg-amber-100 text-amber-700'
-                }`}>
+                <StatusBadge tone={schoolStatusTone(row.original)}>
                     {row.original.is_activated
                         ? 'Activated'
                         : row.original.activation_requested_at
                           ? 'Requested'
                           : 'Pending'}
-                </span>
+                </StatusBadge>
             ),
         },
         {
@@ -103,7 +117,10 @@ export default function AdminSchoolsIndex({ districts, filters, schools }: Props
                                 router.post(
                                     `/app/admin/schools/${row.original.school_id}/manual-activate`,
                                     {},
-                                    { preserveScroll: true },
+                                    {
+                                        preserveScroll: true,
+                                        onSuccess: () => toast.success('School activated.'),
+                                    },
                                 )
                             }
                         >
@@ -129,40 +146,38 @@ export default function AdminSchoolsIndex({ districts, filters, schools }: Props
             <Head title="Schools Management" />
 
             <div className="space-y-6 bg-muted/50 p-4 md:p-6">
-                <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-input bg-background p-5 shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <PageHeaderIcon
-                            icon={School}
-                            className="bg-blue-950 text-blue-400 dark:bg-blue-900/60 dark:text-blue-300"
-                        />
-                        <div>
-                            <h1 className="text-2xl font-bold text-foreground">Schools Management</h1>
-                            <p className="text-sm text-muted-foreground">Create, update, and remove schools.</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Link
-                            href="/app/admin/import/schools"
-                            className="rounded-md border border-input bg-background px-4 py-2 text-sm text-foreground"
-                        >
-                            Import CSV
-                        </Link>
-                        <Link
-                            href="/app/admin/schools/create"
-                            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-                        >
-                            Add School
-                        </Link>
-                    </div>
-                </header>
+                <PageHeader
+                    icon={School}
+                    iconClassName="bg-blue-950 text-blue-400 dark:bg-blue-900/60 dark:text-blue-300"
+                    title="Schools Management"
+                    description="Create, update, and remove schools."
+                    className="border-input bg-background"
+                    actions={
+                        <>
+                            <Link
+                                href="/app/admin/import/schools"
+                                className="rounded-md border border-input bg-background px-4 py-2 text-sm text-foreground"
+                            >
+                                Import CSV
+                            </Link>
+                            <Link
+                                href="/app/admin/schools/create"
+                                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+                            >
+                                Add School
+                            </Link>
+                        </>
+                    }
+                />
 
                 <section className="rounded-2xl border border-input bg-background p-5 shadow-sm">
                     <form method="get" action="/app/admin/schools" className="mb-4 flex flex-wrap gap-2">
-                        <input
+                        <SearchInput
                             name="search"
                             defaultValue={filters.search ?? ''}
                             placeholder="Search school name or ID"
-                            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                            className="h-10"
+                            containerClassName="w-72"
                         />
                         <select
                             name="district_id"
@@ -188,26 +203,7 @@ export default function AdminSchoolsIndex({ districts, filters, schools }: Props
                         searchColumn="school_name"
                     />
 
-                    {schools.links.length > 3 && (
-                        <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                            {schools.links.map((link, index) => (
-                                <span key={index}>
-                                    {link.url ? (
-                                        <Link
-                                            href={link.url}
-                                            className={`rounded border px-3 py-1 ${link.active ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background text-foreground'}`}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
-                                    ) : (
-                                        <span
-                                            className="rounded border border-input bg-background px-3 py-1 text-muted-foreground"
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
-                                    )}
-                                </span>
-                            ))}
-                        </div>
-                    )}
+                    <Pagination links={schools.links} className="mt-4" />
                 </section>
             </div>
         </>

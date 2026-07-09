@@ -1,6 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { School as SchoolIcon } from 'lucide-react';
-import { PageHeaderIcon } from '@/components/page-header-icon';
+import { toast } from 'sonner';
+import { EmptyState, EmptyTableRow } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
 
 type School = {
     school_id: string;
@@ -80,11 +82,20 @@ export default function AdminSchoolShow({
     const municipalityBarangay = `${school.municipality ?? '-'} - ${school.barangay ?? '-'}`;
 
     const manuallyActivate = () => {
-        router.post(`/app/admin/schools/${school.school_id}/manual-activate`);
+        router.post(`/app/admin/schools/${school.school_id}/manual-activate`, {}, {
+            onSuccess: () => toast.success('School manually activated.'),
+        });
     };
 
     const sendCredentials = () => {
-        router.post(`/app/admin/schools/${school.school_id}/send-credentials`, {}, { preserveScroll: true });
+        router.post(
+            `/app/admin/schools/${school.school_id}/send-credentials`,
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => toast.success('Credentials email sent.'),
+            },
+        );
     };
 
     return (
@@ -93,38 +104,36 @@ export default function AdminSchoolShow({
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-6xl space-y-6">
-                    <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <div className="flex items-center gap-4">
-                            <PageHeaderIcon
-                                icon={SchoolIcon}
-                                className="bg-blue-950 text-blue-400 dark:bg-blue-900/60 dark:text-blue-300"
-                            />
-                            <h1 className="text-2xl font-bold text-foreground">{school.school_name} - {school.school_id}</h1>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Link
-                                href="/app/admin/schools"
-                                className="rounded-md border border-input bg-background px-4 py-2 text-sm text-foreground"
-                            >
-                                Back to Index
-                            </Link>
-                            {!school.is_activated && school.activation_requested_at && (
-                                <button
-                                    type="button"
-                                    onClick={manuallyActivate}
-                                    className="rounded-md border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700"
+                    <PageHeader
+                        icon={SchoolIcon}
+                        iconClassName="bg-blue-950 text-blue-400 dark:bg-blue-900/60 dark:text-blue-300"
+                        title={`${school.school_name} - ${school.school_id}`}
+                        actions={
+                            <>
+                                <Link
+                                    href="/app/admin/schools"
+                                    className="rounded-md border border-input bg-background px-4 py-2 text-sm text-foreground"
                                 >
-                                    Manually Activate
-                                </button>
-                            )}
-                            <Link
-                                href={`/app/admin/schools/${school.school_id}/edit`}
-                                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-                            >
-                                Edit School
-                            </Link>
-                        </div>
-                    </header>
+                                    Back to Index
+                                </Link>
+                                {!school.is_activated && school.activation_requested_at && (
+                                    <button
+                                        type="button"
+                                        onClick={manuallyActivate}
+                                        className="rounded-md border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700"
+                                    >
+                                        Manually Activate
+                                    </button>
+                                )}
+                                <Link
+                                    href={`/app/admin/schools/${school.school_id}/edit`}
+                                    className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+                                >
+                                    Edit School
+                                </Link>
+                            </>
+                        }
+                    />
 
                     {generatedEmail && generatedPassword && (
                         <section className="rounded-2xl border border-emerald-300 bg-emerald-50 p-5 shadow-sm">
@@ -178,11 +187,9 @@ export default function AdminSchoolShow({
                                 </p>
                             )}
                         </div>
-                        {!activeSchoolYear && (
-                            <p className="text-sm text-muted-foreground">No active school year is set.</p>
-                        )}
+                        {!activeSchoolYear && <EmptyState message="No active school year is set." />}
                         {activeSchoolYear && enrollments.length === 0 && (
-                            <p className="text-sm text-muted-foreground">No enrollment encoded for the active school year yet.</p>
+                            <EmptyState message="No enrollment encoded for the active school year yet." />
                         )}
                         {enrollments.length > 0 && (
                             <div className="overflow-x-auto rounded-lg border border-border">
@@ -226,11 +233,7 @@ export default function AdminSchoolShow({
                                 </thead>
                                 <tbody>
                                     {learningResources.length === 0 && (
-                                        <tr>
-                                            <td className="px-3 py-6 text-center text-muted-foreground" colSpan={6}>
-                                                No learning resources submitted yet.
-                                            </td>
-                                        </tr>
+                                        <EmptyTableRow colSpan={6} message="No learning resources submitted yet." />
                                     )}
                                     {learningResources.map((resource) => (
                                         <tr key={resource.id} className="border-t border-border">
@@ -263,7 +266,7 @@ export default function AdminSchoolShow({
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <h2 className="mb-4 text-lg font-semibold text-foreground">Recent Inventory Movements</h2>
                         {inventoryMovements.length === 0 && (
-                            <p className="text-sm text-muted-foreground">No inventory movements recorded yet.</p>
+                            <EmptyState message="No inventory movements recorded yet." />
                         )}
                         {inventoryMovements.length > 0 && (
                             <div className="overflow-x-auto rounded-lg border border-border">
