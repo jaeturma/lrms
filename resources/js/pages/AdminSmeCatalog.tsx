@@ -1,9 +1,15 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { FlaskConical, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
+import { toast } from 'sonner';
+import { EmptyTableRow } from '@/components/empty-state';
 import InputError from '@/components/input-error';
-import { PageHeaderIcon } from '@/components/page-header-icon';
+import { PageHeader } from '@/components/page-header';
+import { Pagination } from '@/components/pagination';
+import { RowActions } from '@/components/row-actions';
+import { SearchInput } from '@/components/search-input';
+import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -99,7 +105,10 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
     const submit = () => {
         const options = {
             preserveScroll: true,
-            onSuccess: () => setDialogOpen(false),
+            onSuccess: () => {
+                setDialogOpen(false);
+                toast.success(editingId === null ? 'SME item added to catalog.' : 'Catalog SME item updated.');
+            },
         };
 
         if (editingId === null) {
@@ -120,7 +129,10 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
             return;
         }
 
-        router.delete(`/app/admin/sme-catalog/${item.id}`, { preserveScroll: true });
+        router.delete(`/app/admin/sme-catalog/${item.id}`, {
+            preserveScroll: true,
+            onSuccess: () => toast.success('Catalog SME item removed.'),
+        });
     };
 
     const submitImport = async (event: FormEvent<HTMLFormElement>) => {
@@ -160,27 +172,18 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-7xl space-y-6">
-                    <header className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-4">
-                                <PageHeaderIcon
-                                    icon={FlaskConical}
-                                    className="bg-rose-950 text-rose-400 dark:bg-rose-900/60 dark:text-rose-300"
-                                />
-                                <div>
-                                    <h1 className="text-2xl font-bold text-foreground">SME Catalog</h1>
-                                    <p className="text-sm text-muted-foreground">
-                                        Division-managed list of Science & Math Equipment ({catalogItems.total.toLocaleString()} items).
-                                        Schools pick from this catalog when registering the SME items in their possession.
-                                    </p>
-                                </div>
-                            </div>
+                    <PageHeader
+                        icon={FlaskConical}
+                        iconClassName="bg-rose-950 text-rose-400 dark:bg-rose-900/60 dark:text-rose-300"
+                        title="SME Catalog"
+                        description={`Division-managed list of Science & Math Equipment (${catalogItems.total.toLocaleString()} items). Schools pick from this catalog when registering the SME items in their possession.`}
+                        actions={
                             <Button type="button" onClick={openAddDialog}>
                                 <Plus className="mr-1 h-4 w-4" />
                                 Add SME Item
                             </Button>
-                        </div>
-                    </header>
+                        }
+                    />
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -223,11 +226,11 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
                             </div>
                         )}
                         <form method="get" action="/app/admin/sme-catalog" className="mb-4 flex flex-wrap gap-2">
-                            <input
+                            <SearchInput
                                 name="search"
                                 defaultValue={filters.search ?? ''}
                                 placeholder="Search name, brand, model, or manufacturer"
-                                className="h-9 w-72 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                                containerClassName="w-72"
                             />
                             <select
                                 name="category"
@@ -261,11 +264,10 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
                                 </thead>
                                 <tbody>
                                     {catalogItems.data.length === 0 && (
-                                        <tr>
-                                            <td className="px-3 py-6 text-center text-muted-foreground" colSpan={7}>
-                                                No catalog SME items found. Click Add SME Item to create the first entry.
-                                            </td>
-                                        </tr>
+                                        <EmptyTableRow
+                                            colSpan={7}
+                                            message="No catalog SME items found. Click Add SME Item to create the first entry."
+                                        />
                                     )}
                                     {catalogItems.data.map((item) => (
                                         <tr key={item.id} className="border-t border-border">
@@ -277,31 +279,23 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
                                             <td className="px-3 py-2 text-muted-foreground">{item.manufacturer ?? '-'}</td>
                                             <td className="px-3 py-2 text-muted-foreground">{item.schools_using.toLocaleString()}</td>
                                             <td className="px-3 py-2">
-                                                <span
-                                                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                                                        item.is_active
-                                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
-                                                            : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-                                                    }`}
-                                                >
+                                                <StatusBadge tone={item.is_active ? 'success' : 'neutral'}>
                                                     {item.is_active ? 'Active' : 'Inactive'}
-                                                </span>
+                                                </StatusBadge>
                                             </td>
                                             <td className="px-3 py-2">
-                                                <div className="flex gap-2">
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => openEditDialog(item)}>
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40"
-                                                        onClick={() => deleteItem(item)}
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
+                                                <RowActions
+                                                    label={`Actions for ${item.item_name}`}
+                                                    actions={[
+                                                        { label: 'Edit', icon: Pencil, onSelect: () => openEditDialog(item) },
+                                                        {
+                                                            label: 'Delete',
+                                                            icon: Trash2,
+                                                            variant: 'destructive',
+                                                            onSelect: () => deleteItem(item),
+                                                        },
+                                                    ]}
+                                                />
                                             </td>
                                         </tr>
                                     ))}
@@ -309,26 +303,7 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
                             </table>
                         </div>
 
-                        {catalogItems.links.length > 3 && (
-                            <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                                {catalogItems.links.map((link, index) => (
-                                    <span key={index}>
-                                        {link.url ? (
-                                            <Link
-                                                href={link.url}
-                                                className={`rounded border px-3 py-1 ${link.active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground'}`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        ) : (
-                                            <span
-                                                className="rounded border border-border bg-card px-3 py-1 text-muted-foreground"
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        )}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                        <Pagination links={catalogItems.links} className="mt-4" />
                     </section>
                 </div>
             </main>

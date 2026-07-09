@@ -1,6 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import { FlaskConical } from 'lucide-react';
-import { PageHeaderIcon } from '@/components/page-header-icon';
+import { EmptyTableRow } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
+import { Pagination } from '@/components/pagination';
+import { SearchInput } from '@/components/search-input';
 
 type SmeRow = {
     id: number;
@@ -44,39 +47,35 @@ export default function AdminSme({ filters, categories, statuses, sme, summary }
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-7xl space-y-6">
-                    <header className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <PageHeaderIcon
-                            icon={FlaskConical}
-                            className="bg-rose-950 text-rose-400 dark:bg-rose-900/60 dark:text-rose-300"
-                        />
-                        <div>
-                            <h1 className="text-2xl font-bold text-foreground">Science & Math Equipment</h1>
-                            <p className="text-sm text-muted-foreground">
-                                Division-wide view of SME items registered by schools ({summary.total.toLocaleString()} items).
-                            </p>
-                            {Object.keys(summary.by_status).length > 0 && (
-                                <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                                    {Object.entries(summary.by_status).map(([status, total]) => (
-                                        <span
-                                            key={status}
-                                            className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-muted-foreground"
-                                        >
-                                            <span className="font-semibold text-foreground">{total.toLocaleString()}</span>
-                                            {status}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </header>
+                    <PageHeader
+                        icon={FlaskConical}
+                        iconClassName="bg-rose-950 text-rose-400 dark:bg-rose-900/60 dark:text-rose-300"
+                        title="Science & Math Equipment"
+                        description={`Division-wide view of SME items registered by schools (${summary.total.toLocaleString()} items).`}
+                        align="start"
+                    >
+                        {Object.keys(summary.by_status).length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                {Object.entries(summary.by_status).map(([status, total]) => (
+                                    <span
+                                        key={status}
+                                        className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-muted-foreground"
+                                    >
+                                        <span className="font-semibold text-foreground">{total.toLocaleString()}</span>
+                                        {status}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </PageHeader>
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <form method="get" action="/app/admin/sme" className="mb-4 flex flex-wrap gap-2">
-                            <input
+                            <SearchInput
                                 name="search"
                                 defaultValue={filters.search ?? ''}
                                 placeholder="Search item, code, serial, or school"
-                                className="h-9 w-72 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                                containerClassName="w-72"
                             />
                             <select
                                 name="category"
@@ -122,13 +121,7 @@ export default function AdminSme({ filters, categories, statuses, sme, summary }
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {sme.data.length === 0 && (
-                                        <tr>
-                                            <td className="px-3 py-6 text-center text-muted-foreground" colSpan={8}>
-                                                No SME items found.
-                                            </td>
-                                        </tr>
-                                    )}
+                                    {sme.data.length === 0 && <EmptyTableRow colSpan={8} message="No SME items found." />}
                                     {sme.data.map((item) => (
                                         <tr key={item.id} className="border-t border-border">
                                             <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{item.item_code}</td>
@@ -158,26 +151,7 @@ export default function AdminSme({ filters, categories, statuses, sme, summary }
                             </table>
                         </div>
 
-                        {sme.links.length > 3 && (
-                            <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                                {sme.links.map((link, index) => (
-                                    <span key={index}>
-                                        {link.url ? (
-                                            <Link
-                                                href={link.url}
-                                                className={`rounded border px-3 py-1 ${link.active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground'}`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        ) : (
-                                            <span
-                                                className="rounded border border-border bg-card px-3 py-1 text-muted-foreground"
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        )}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                        <Pagination links={sme.links} className="mt-4" />
                     </section>
                 </div>
             </main>

@@ -1,6 +1,12 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { Eye, History, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { EmptyTableRow } from '@/components/empty-state';
+import { RowActions } from '@/components/row-actions';
+import { SearchInput } from '@/components/search-input';
+import { StatusBadge } from '@/components/status-badge';
+import type { StatusTone } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -206,7 +212,10 @@ export default function SchoolSme({ sme, movements, catalog, categories, conditi
     const submit = () => {
         const options = {
             preserveScroll: true,
-            onSuccess: () => setDialogOpen(false),
+            onSuccess: () => {
+                setDialogOpen(false);
+                toast.success(editingId === null ? 'SME item registered.' : 'SME item updated.');
+            },
         };
 
         if (editingId === null) {
@@ -221,7 +230,10 @@ export default function SchoolSme({ sme, movements, catalog, categories, conditi
             return;
         }
 
-        router.delete(`/school/sme/${item.id}`, { preserveScroll: true });
+        router.delete(`/school/sme/${item.id}`, {
+            preserveScroll: true,
+            onSuccess: () => toast.success('SME item removed.'),
+        });
     };
 
     const filteredSme = useMemo(() => {
@@ -253,19 +265,19 @@ export default function SchoolSme({ sme, movements, catalog, categories, conditi
 
     const historyItem = sme.find((item) => item.id === historySmeId);
 
-    const statusBadgeClass = (status: string): string => {
+    const statusTone = (status: string): StatusTone => {
         switch (status) {
             case 'Available':
-                return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300';
+                return 'success';
             case 'In Use':
-                return 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300';
+                return 'info';
             case 'Borrowed':
-                return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300';
+                return 'accent';
             case 'Missing':
             case 'Lost':
-                return 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300';
+                return 'danger';
             default:
-                return 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300';
+                return 'warning';
         }
     };
 
@@ -290,11 +302,11 @@ export default function SchoolSme({ sme, movements, catalog, categories, conditi
                     </div>
 
                     <div className="mb-4 flex flex-wrap gap-2">
-                        <Input
+                        <SearchInput
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             placeholder="Search name, code, serial, property no."
-                            className="w-72"
+                            containerClassName="w-72"
                         />
                         <select
                             value={categoryFilter}
@@ -339,13 +351,14 @@ export default function SchoolSme({ sme, movements, catalog, categories, conditi
                             </thead>
                             <tbody>
                                 {filteredSme.length === 0 && (
-                                    <tr>
-                                        <td className="px-3 py-6 text-center text-muted-foreground" colSpan={7}>
-                                            {sme.length === 0
+                                    <EmptyTableRow
+                                        colSpan={7}
+                                        message={
+                                            sme.length === 0
                                                 ? 'No SME items registered yet. Click Register SME Item to add the first item.'
-                                                : 'No SME items match the current filters.'}
-                                        </td>
-                                    </tr>
+                                                : 'No SME items match the current filters.'
+                                        }
+                                    />
                                 )}
                                 {filteredSme.map((item) => (
                                     <tr key={item.id} className="border-t border-border">
@@ -354,37 +367,29 @@ export default function SchoolSme({ sme, movements, catalog, categories, conditi
                                         <td className="px-3 py-2 text-muted-foreground">{item.category}</td>
                                         <td className="px-3 py-2 text-muted-foreground">{item.condition}</td>
                                         <td className="px-3 py-2">
-                                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(item.status)}`}>
-                                                {item.status}
-                                            </span>
+                                            <StatusBadge tone={statusTone(item.status)}>{item.status}</StatusBadge>
                                         </td>
                                         <td className="px-3 py-2 text-muted-foreground">{item.assigned_personnel ?? '-'}</td>
                                         <td className="px-3 py-2">
-                                            <div className="flex gap-2">
-                                                <Button type="button" variant="outline" size="sm" onClick={() => setViewItem(item)}>
-                                                    <Eye className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button type="button" variant="outline" size="sm" onClick={() => openEditDialog(item)}>
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setHistorySmeId(historySmeId === item.id ? null : item.id)}
-                                                >
-                                                    <History className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40"
-                                                    onClick={() => deleteSme(item)}
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
+                                            <RowActions
+                                                label={`Actions for ${item.item_name}`}
+                                                actions={[
+                                                    { label: 'View', icon: Eye, onSelect: () => setViewItem(item) },
+                                                    { label: 'Edit', icon: Pencil, onSelect: () => openEditDialog(item) },
+                                                    {
+                                                        label: 'History',
+                                                        icon: History,
+                                                        onSelect: () =>
+                                                            setHistorySmeId(historySmeId === item.id ? null : item.id),
+                                                    },
+                                                    {
+                                                        label: 'Delete',
+                                                        icon: Trash2,
+                                                        variant: 'destructive',
+                                                        onSelect: () => deleteSme(item),
+                                                    },
+                                                ]}
+                                            />
                                         </td>
                                     </tr>
                                 ))}
@@ -420,11 +425,7 @@ export default function SchoolSme({ sme, movements, catalog, categories, conditi
                             </thead>
                             <tbody>
                                 {visibleMovements.length === 0 && (
-                                    <tr>
-                                        <td className="px-3 py-6 text-center text-muted-foreground" colSpan={6}>
-                                            No SME movements recorded yet.
-                                        </td>
-                                    </tr>
+                                    <EmptyTableRow colSpan={6} message="No SME movements recorded yet." />
                                 )}
                                 {visibleMovements.map((movement) => (
                                     <tr key={movement.id} className="border-t border-border">
