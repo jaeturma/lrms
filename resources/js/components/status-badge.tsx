@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'accent' | 'neutral';
 
 const toneClasses: Record<StatusTone, string> = {
     success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
     warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
     danger: 'bg-red-500/10 text-red-600 dark:text-red-400',
     info: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+    accent: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
     neutral: 'bg-muted text-muted-foreground',
 };
 
@@ -19,7 +20,7 @@ type StatusBadgeProps = {
 
 /**
  * Shared status pill. Callers map their own domain status (e.g. "pending",
- * "active") to one of the five tones below — this component only owns the
+ * "active") to one of the six tones below — this component only owns the
  * visual recipe, not any page's status vocabulary.
  */
 export function StatusBadge({ tone, children, className }: StatusBadgeProps) {

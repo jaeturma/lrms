@@ -1,6 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import { MonitorSmartphone } from 'lucide-react';
-import { PageHeaderIcon } from '@/components/page-header-icon';
+import { EmptyTableRow } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
+import { Pagination } from '@/components/pagination';
+import { SearchInput } from '@/components/search-input';
 
 type EquipmentRow = {
     id: number;
@@ -44,39 +47,35 @@ export default function AdminIctEquipment({ filters, categories, statuses, equip
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-7xl space-y-6">
-                    <header className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <PageHeaderIcon
-                            icon={MonitorSmartphone}
-                            className="bg-teal-950 text-teal-400 dark:bg-teal-900/60 dark:text-teal-300"
-                        />
-                        <div>
-                            <h1 className="text-2xl font-bold text-foreground">ICT Equipment</h1>
-                            <p className="text-sm text-muted-foreground">
-                                Division-wide view of ICT equipment registered by schools ({summary.total.toLocaleString()} items).
-                            </p>
-                            {Object.keys(summary.by_status).length > 0 && (
-                                <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                                    {Object.entries(summary.by_status).map(([status, total]) => (
-                                        <span
-                                            key={status}
-                                            className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-muted-foreground"
-                                        >
-                                            <span className="font-semibold text-foreground">{total.toLocaleString()}</span>
-                                            {status}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </header>
+                    <PageHeader
+                        icon={MonitorSmartphone}
+                        iconClassName="bg-teal-950 text-teal-400 dark:bg-teal-900/60 dark:text-teal-300"
+                        title="ICT Equipment"
+                        description={`Division-wide view of ICT equipment registered by schools (${summary.total.toLocaleString()} items).`}
+                        align="start"
+                    >
+                        {Object.keys(summary.by_status).length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                {Object.entries(summary.by_status).map(([status, total]) => (
+                                    <span
+                                        key={status}
+                                        className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-muted-foreground"
+                                    >
+                                        <span className="font-semibold text-foreground">{total.toLocaleString()}</span>
+                                        {status}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </PageHeader>
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <form method="get" action="/app/admin/ict-equipment" className="mb-4 flex flex-wrap gap-2">
-                            <input
+                            <SearchInput
                                 name="search"
                                 defaultValue={filters.search ?? ''}
                                 placeholder="Search item, code, serial, or school"
-                                className="h-9 w-72 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                                containerClassName="w-72"
                             />
                             <select
                                 name="category"
@@ -123,11 +122,7 @@ export default function AdminIctEquipment({ filters, categories, statuses, equip
                                 </thead>
                                 <tbody>
                                     {equipment.data.length === 0 && (
-                                        <tr>
-                                            <td className="px-3 py-6 text-center text-muted-foreground" colSpan={8}>
-                                                No equipment found.
-                                            </td>
-                                        </tr>
+                                        <EmptyTableRow colSpan={8} message="No equipment found." />
                                     )}
                                     {equipment.data.map((item) => (
                                         <tr key={item.id} className="border-t border-border">
@@ -158,26 +153,7 @@ export default function AdminIctEquipment({ filters, categories, statuses, equip
                             </table>
                         </div>
 
-                        {equipment.links.length > 3 && (
-                            <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                                {equipment.links.map((link, index) => (
-                                    <span key={index}>
-                                        {link.url ? (
-                                            <Link
-                                                href={link.url}
-                                                className={`rounded border px-3 py-1 ${link.active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground'}`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        ) : (
-                                            <span
-                                                className="rounded border border-border bg-card px-3 py-1 text-muted-foreground"
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        )}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                        <Pagination links={equipment.links} className="mt-4" />
                     </section>
                 </div>
             </main>
