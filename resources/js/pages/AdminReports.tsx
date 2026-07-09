@@ -1,6 +1,10 @@
 import { Head } from '@inertiajs/react';
 import { ChartColumn } from 'lucide-react';
-import { PageHeaderIcon } from '@/components/page-header-icon';
+import { ChartCard } from '@/components/charts/chart-card';
+import { EmptyChart } from '@/components/charts/empty-chart';
+import { GroupedColumnChart } from '@/components/charts/grouped-column-chart';
+import { EmptyTableRow } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
 
 type Option = {
     id: number;
@@ -46,6 +50,8 @@ type Props = {
     equipmentConditions: string[];
 };
 
+const CHART_SERIES_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
+
 function exportUrl(path: string, filters: Props['filters']): string {
     const params = new URLSearchParams();
 
@@ -79,18 +85,13 @@ export default function AdminReports({
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-7xl space-y-6">
-                    <header className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <PageHeaderIcon
-                            icon={ChartColumn}
-                            className="bg-orange-950 text-orange-400 dark:bg-orange-900/60 dark:text-orange-300"
-                        />
-                        <div className="min-w-0 flex-1">
-                        <h1 className="text-2xl font-bold text-foreground">Division Reports</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Learning resource adequacy and equipment condition summaries across the division
-                            {selectedSchoolYear ? ` for SY ${selectedSchoolYear.name}` : ''}.
-                        </p>
-
+                    <PageHeader
+                        icon={ChartColumn}
+                        iconClassName="bg-orange-950 text-orange-400 dark:bg-orange-900/60 dark:text-orange-300"
+                        title="Division Reports"
+                        description={`Learning resource adequacy and equipment condition summaries across the division${selectedSchoolYear ? ` for SY ${selectedSchoolYear.name}` : ''}.`}
+                        align="start"
+                    >
                         <form method="get" action="/app/admin/reports" className="mt-4 flex flex-wrap gap-2">
                             <select
                                 name="school_year_id"
@@ -132,8 +133,7 @@ export default function AdminReports({
                                 Filter
                             </button>
                         </form>
-                        </div>
-                    </header>
+                    </PageHeader>
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -181,11 +181,7 @@ export default function AdminReports({
                                 </thead>
                                 <tbody>
                                     {resourceAdequacy.length === 0 && (
-                                        <tr>
-                                            <td className="px-3 py-6 text-center text-muted-foreground" colSpan={7}>
-                                                No schools found for the selected filters.
-                                            </td>
-                                        </tr>
+                                        <EmptyTableRow colSpan={7} message="No schools found for the selected filters." />
                                     )}
                                     {resourceAdequacy.map((row) => (
                                         <tr key={row.school_id} className="border-t border-border">
@@ -280,43 +276,36 @@ function EquipmentConditionSummary({
                 </div>
             )}
 
-            <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="min-w-full text-sm">
-                    <thead className="bg-muted text-left text-foreground">
-                        <tr>
-                            <th className="px-3 py-2">Category</th>
-                            {conditions.map((condition) => (
-                                <th key={condition} className="px-3 py-2 text-right">
-                                    {condition}
-                                </th>
-                            ))}
-                            <th className="px-3 py-2 text-right">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {byCategory.length === 0 && (
-                            <tr>
-                                <td className="px-3 py-6 text-center text-muted-foreground" colSpan={conditions.length + 2}>
-                                    No equipment found for the selected filters.
-                                </td>
-                            </tr>
-                        )}
-                        {byCategory.map((row) => (
-                            <tr key={row.category} className="border-t border-border">
-                                <td className="px-3 py-2 font-medium text-foreground">{row.category}</td>
-                                {conditions.map((condition) => (
-                                    <td key={condition} className="px-3 py-2 text-right text-muted-foreground">
-                                        {(row.conditions[condition] ?? 0).toLocaleString()}
-                                    </td>
-                                ))}
-                                <td className="px-3 py-2 text-right font-semibold text-foreground">
-                                    {row.total.toLocaleString()}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            <ChartCard
+                title="By category and condition"
+                legend={conditions.map((condition, index) => ({
+                    label: condition,
+                    color: CHART_SERIES_COLORS[index % CHART_SERIES_COLORS.length],
+                }))}
+                table={{
+                    headers: ['Category', ...conditions, 'Total'],
+                    rows: byCategory.map((row) => [
+                        row.category,
+                        ...conditions.map((condition) => row.conditions[condition] ?? 0),
+                        row.total,
+                    ]),
+                }}
+            >
+                {byCategory.length > 0 ? (
+                    <GroupedColumnChart
+                        data={byCategory.map((row) => ({
+                            label: row.category,
+                            values: conditions.map((condition) => row.conditions[condition] ?? 0),
+                        }))}
+                        series={conditions.map((condition, index) => ({
+                            name: condition,
+                            color: CHART_SERIES_COLORS[index % CHART_SERIES_COLORS.length],
+                        }))}
+                    />
+                ) : (
+                    <EmptyChart message="No equipment found for the selected filters." />
+                )}
+            </ChartCard>
         </section>
     );
 }
