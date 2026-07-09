@@ -1,14 +1,19 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
+import { Cog } from 'lucide-react';
 import type { ReactNode } from 'react';
 import InputError from '@/components/input-error';
+import { PageHeaderIcon } from '@/components/page-header-icon';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type Settings = {
     login_title: string;
     login_logo_url?: string | null;
     app_title: string;
     app_logo_url?: string | null;
+    smtp_enabled?: boolean;
     smtp_host?: string | null;
     smtp_port?: string | null;
     smtp_username?: string | null;
@@ -40,6 +45,7 @@ export default function AdminAppSettings({ settings }: Props) {
         app_title: settings.app_title ?? '',
         app_logo_url: settings.app_logo_url ?? '',
         app_logo_file: null as File | null,
+        smtp_enabled: settings.smtp_enabled ?? false,
         smtp_host: settings.smtp_host ?? '',
         smtp_port: settings.smtp_port ?? '',
         smtp_username: settings.smtp_username ?? '',
@@ -92,9 +98,15 @@ export default function AdminAppSettings({ settings }: Props) {
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-5xl space-y-6">
-                    <header className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <h1 className="text-2xl font-bold text-foreground">App Settings</h1>
-                        <p className="text-sm text-muted-foreground">Manage branding, logos, and Gmail SMTP configuration for OTP emails.</p>
+                    <header className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+                        <PageHeaderIcon
+                            icon={Cog}
+                            className="bg-slate-950 text-slate-400 dark:bg-slate-900/60 dark:text-slate-300"
+                        />
+                        <div>
+                            <h1 className="text-2xl font-bold text-foreground">App Settings</h1>
+                            <p className="text-sm text-muted-foreground">Manage branding, logos, and Gmail SMTP configuration for OTP emails.</p>
+                        </div>
                     </header>
 
                     {status && (
@@ -137,6 +149,25 @@ export default function AdminAppSettings({ settings }: Props) {
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <h2 className="mb-4 text-lg font-semibold text-foreground">Gmail SMTP for OTP</h2>
+
+                        <div className="mb-4 flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-4">
+                            <Checkbox
+                                id="smtp_enabled"
+                                checked={data.smtp_enabled}
+                                onCheckedChange={(checked) => setData('smtp_enabled', checked === true)}
+                            />
+                            <div>
+                                <Label htmlFor="smtp_enabled" className="font-medium text-foreground">
+                                    Enable SMTP Email Sending
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                    When off, no emails are sent (school activation OTP, initial login credentials, or
+                                    password-reset OTP) even if the fields below are filled in — pages will show a
+                                    message asking to coordinate manually instead.
+                                </p>
+                            </div>
+                        </div>
+
                         <div className="grid gap-4 md:grid-cols-2">
                             <Field label="SMTP Host" error={errors.smtp_host}>
                                 <Input value={data.smtp_host} onChange={(event) => setData('smtp_host', event.target.value)} placeholder="smtp.gmail.com" />

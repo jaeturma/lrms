@@ -1,7 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Check, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Check, Eye, Pencil, School, Trash2 } from 'lucide-react';
 import { DataTable } from '@/components/data-table';
+import { PageHeaderIcon } from '@/components/page-header-icon';
 import { Button } from '@/components/ui/button';
 
 type District = {
@@ -129,9 +130,15 @@ export default function AdminSchoolsIndex({ districts, filters, schools }: Props
 
             <div className="space-y-6 bg-muted/50 p-4 md:p-6">
                 <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-input bg-background p-5 shadow-sm">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">Schools Management</h1>
-                        <p className="text-sm text-muted-foreground">Create, update, and remove schools.</p>
+                    <div className="flex items-center gap-4">
+                        <PageHeaderIcon
+                            icon={School}
+                            className="bg-blue-950 text-blue-400 dark:bg-blue-900/60 dark:text-blue-300"
+                        />
+                        <div>
+                            <h1 className="text-2xl font-bold text-foreground">Schools Management</h1>
+                            <p className="text-sm text-muted-foreground">Create, update, and remove schools.</p>
+                        </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <Link

@@ -1,9 +1,10 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { LibraryBig, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useMemo, useState } from 'react';
 import { DataTable } from '@/components/data-table';
+import { PageHeaderIcon } from '@/components/page-header-icon';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -277,11 +278,17 @@ export default function AdminLocationsPage({
 
             <div className="space-y-6 bg-muted/50 p-4 md:p-6">
                 <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-input bg-background p-5 shadow-sm">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">{pageTitle}</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Manage municipalities, districts, and barangays.
-                        </p>
+                    <div className="flex items-center gap-4">
+                        <PageHeaderIcon
+                            icon={LibraryBig}
+                            className="bg-violet-950 text-violet-400 dark:bg-violet-900/60 dark:text-violet-300"
+                        />
+                        <div>
+                            <h1 className="text-2xl font-bold text-foreground">{pageTitle}</h1>
+                            <p className="text-sm text-muted-foreground">
+                                Manage municipalities, districts, and barangays.
+                            </p>
+                        </div>
                     </div>
                     <a
                         href="/app/admin/locations/template"

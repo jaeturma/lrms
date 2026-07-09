@@ -18,7 +18,7 @@ class SchoolDistributionController extends Controller
 
         $distributions = ResourceDistribution::query()
             ->where('school_id', $school->id)
-            ->with(['learningResourceType:id,name', 'receiver:id,name'])
+            ->with(['learningResourceType:id,name', 'resourceTitle:id,author', 'receiver:id,name'])
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->get()
@@ -27,6 +27,7 @@ class SchoolDistributionController extends Controller
                 'reference_code' => $distribution->reference_code,
                 'resource_type' => $distribution->learningResourceType?->name,
                 'title' => $distribution->title,
+                'author' => $distribution->resourceTitle?->author,
                 'publisher' => $distribution->publisher,
                 'quantity' => $distribution->quantity,
                 'quantity_damaged' => $distribution->quantity_damaged,

@@ -1,10 +1,17 @@
 <?php
 
 use App\Models\District;
+use App\Models\Enrollment;
+use App\Models\GradeLevel;
+use App\Models\IctEquipment;
+use App\Models\IctEquipmentCatalogItem;
 use App\Models\LearningResource;
 use App\Models\LearningResourceType;
 use App\Models\Municipality;
+use App\Models\ResourceDistribution;
+use App\Models\ResourceTitle;
 use App\Models\School;
+use App\Models\SchoolYear;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -17,6 +24,17 @@ test('authenticated admin visiting admin login is redirected to admin dashboard'
         ->get(route('admin.login'));
 
     $response->assertRedirect(route('admin.dashboard'));
+});
+
+test('admin login rejects oversized credentials', function () {
+    $response = $this->post(route('admin.login.store'), [
+        'email' => str_repeat('a', 43).'@example.com',
+        'password' => str_repeat('p', 31),
+    ]);
+
+    $response->assertSessionHasErrors(['email', 'password']);
+
+    $this->assertGuest();
 });
 
 test('admin can view dashboard', function () {
@@ -33,10 +51,233 @@ test('admin can view dashboard', function () {
             ->has('stats')
             ->has('districts')
             ->has('filters')
-            ->has('reportsByDistrict')
+            ->has('enrollmentByGrade')
+            ->has('activationByMunicipality')
+            ->has('equipmentCondition')
+            ->has('defectRateByMunicipality')
+            ->has('pendingActivations')
             ->has('schools.data')
             ->missing('learningResourceTypes')
         );
+});
+
+test('dashboard aggregates reflect collected data', function () {
+    $admin = User::factory()->admin()->create();
+
+    $municipality = Municipality::factory()->create(['name' => 'Maco']);
+    $district = District::factory()->create(['municipality_id' => $municipality->id]);
+
+    $activatedSchool = School::factory()->create([
+        'district_id' => $district->id,
+        'municipality_id' => $municipality->id,
+        'is_activated' => true,
+    ]);
+    $pendingSchool = School::factory()->create([
+        'district_id' => $district->id,
+        'municipality_id' => $municipality->id,
+        'is_activated' => false,
+        'activation_requested_at' => now(),
+    ]);
+
+    $schoolYear = SchoolYear::factory()->active()->create();
+    $grade = GradeLevel::factory()->create(['name' => 'Grade 1', 'sort_order' => 1]);
+
+    Enrollment::factory()->create([
+        'school_id' => $activatedSchool->id,
+        'school_year_id' => $schoolYear->id,
+        'grade_level_id' => $grade->id,
+        'male_count' => 60,
+        'female_count' => 40,
+    ]);
+
+    LearningResource::factory()->create([
+        'school_id' => $activatedSchool->id,
+        'quantity_delivered' => 50,
+        'quantity_with_issue_defect' => 5,
+    ]);
+
+    IctEquipment::factory()->create(['school_id' => $activatedSchool->id, 'condition' => 'Good']);
+    IctEquipment::factory()->create(['school_id' => $activatedSchool->id, 'condition' => 'Needs Repair']);
+
+    ResourceDistribution::factory()->create(['school_id' => $activatedSchool->id, 'status' => 'pending']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('AdminDashboard')
+            ->where('stats.total_schools', 2)
+            ->where('stats.activated_schools', 1)
+            ->where('stats.pending_requests', 1)
+            ->where('stats.total_learners', 100)
+            ->where('stats.male_learners', 60)
+            ->where('stats.female_learners', 40)
+            ->where('stats.copies_delivered', 50)
+            ->where('stats.copies_with_defects', 5)
+            ->where('stats.defect_rate', 10)
+            ->where('stats.total_equipment', 2)
+            ->where('stats.equipment_needing_repair', 1)
+            ->where('stats.pending_distributions', 1)
+            ->where('enrollmentByGrade.0.grade', 'Grade 1')
+            ->where('enrollmentByGrade.0.male', 60)
+            ->where('enrollmentByGrade.0.female', 40)
+            ->where('activationByMunicipality.0.municipality', 'Maco')
+            ->where('activationByMunicipality.0.activated', 1)
+            ->where('activationByMunicipality.0.total', 2)
+            ->where('equipmentCondition.0.type', 'ICT Equipment')
+            ->where('equipmentCondition.0.good', 1)
+            ->where('equipmentCondition.0.needs_attention', 1)
+            ->where('defectRateByMunicipality.0.municipality', 'Maco')
+            ->where('defectRateByMunicipality.0.rate', 10)
+            ->has('pendingActivations', 1)
+            ->where('pendingActivations.0.school_id', $pendingSchool->school_id)
+        );
+});
+
+test('dashboard scope filters narrow aggregates to the selected district, school type, and grade level', function () {
+    $admin = User::factory()->admin()->create();
+
+    $municipalityA = Municipality::factory()->create(['name' => 'Maco']);
+    $districtA = District::factory()->create(['municipality_id' => $municipalityA->id]);
+    $municipalityB = Municipality::factory()->create(['name' => 'Nabunturan']);
+    $districtB = District::factory()->create(['municipality_id' => $municipalityB->id]);
+
+    $schoolA = School::factory()->create([
+        'district_id' => $districtA->id,
+        'municipality_id' => $municipalityA->id,
+        'school_type' => 'Elementary',
+        'is_activated' => true,
+    ]);
+    $schoolB = School::factory()->create([
+        'district_id' => $districtB->id,
+        'municipality_id' => $municipalityB->id,
+        'school_type' => 'Junior High School',
+        'is_activated' => true,
+    ]);
+
+    $schoolYear = SchoolYear::factory()->active()->create();
+    $gradeOne = GradeLevel::factory()->create(['name' => 'Grade 1', 'sort_order' => 1]);
+    $gradeSeven = GradeLevel::factory()->create(['name' => 'Grade 7', 'sort_order' => 7]);
+
+    Enrollment::factory()->create([
+        'school_id' => $schoolA->id,
+        'school_year_id' => $schoolYear->id,
+        'grade_level_id' => $gradeOne->id,
+        'male_count' => 10,
+        'female_count' => 5,
+    ]);
+    Enrollment::factory()->create([
+        'school_id' => $schoolB->id,
+        'school_year_id' => $schoolYear->id,
+        'grade_level_id' => $gradeSeven->id,
+        'male_count' => 20,
+        'female_count' => 8,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard', ['district_id' => $districtA->id]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('AdminDashboard')
+            ->where('stats.total_schools', 1)
+            ->where('stats.total_learners', 15)
+            ->where('filters.district_id', $districtA->id)
+            ->has('schoolTypes', 5)
+            ->has('gradeLevels', 2)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard', ['school_type' => 'Junior High School']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('AdminDashboard')
+            ->where('stats.total_schools', 1)
+            ->where('stats.total_learners', 28)
+            ->where('filters.school_type', 'Junior High School')
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard', ['grade_level_id' => $gradeOne->id]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('AdminDashboard')
+            ->where('stats.total_learners', 15)
+            ->has('enrollmentByGrade', 1)
+            ->where('enrollmentByGrade.0.grade', 'Grade 1')
+            ->where('filters.grade_level_id', $gradeOne->id)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('AdminDashboard')
+            ->where('stats.total_schools', 2)
+            ->where('stats.total_learners', 43)
+            ->where('filters.district_id', null)
+            ->where('filters.school_type', null)
+            ->where('filters.grade_level_id', null)
+        );
+});
+
+test('executive roles can view the dashboard', function () {
+    $asds = User::factory()->create(['role' => 'asds']);
+
+    $this->actingAs($asds)
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('AdminDashboard'));
+});
+
+test('system roles can access reference data and managers cannot', function () {
+    $ito = User::factory()->create(['role' => 'ito']);
+    $manager = User::factory()->create(['role' => 'manager']);
+
+    $this
+        ->actingAs($ito)
+        ->get(route('admin.districts.index'))
+        ->assertOk();
+
+    $this
+        ->actingAs($manager)
+        ->get(route('admin.districts.index'))
+        ->assertForbidden();
+});
+
+test('catalog roles can access catalogs and executive roles cannot', function () {
+    $supply = User::factory()->create(['role' => 'supply']);
+    $cidChief = User::factory()->create(['role' => 'cidchief']);
+
+    $this
+        ->actingAs($supply)
+        ->get(route('admin.resource-titles.index'))
+        ->assertOk();
+
+    $this
+        ->actingAs($supply)
+        ->get(route('admin.ict-equipment-catalog.index'))
+        ->assertOk();
+
+    $this
+        ->actingAs($cidChief)
+        ->get(route('admin.resource-titles.index'))
+        ->assertForbidden();
+
+    $this
+        ->actingAs($cidChief)
+        ->get(route('admin.ict-equipment-catalog.index'))
+        ->assertForbidden();
+});
+
+test('executive roles can only access monitoring modules', function () {
+    $asds = User::factory()->create(['role' => 'asds']);
+
+    $this->actingAs($asds)->get(route('admin.learning-materials.index'))->assertOk();
+    $this->actingAs($asds)->get(route('admin.ict-equipment.index'))->assertOk();
+    $this->actingAs($asds)->get(route('admin.schools.index'))->assertOk();
+    $this->actingAs($asds)->get(route('admin.reports.index'))->assertOk();
+    $this->actingAs($asds)->get(route('admin.settings.edit'))->assertForbidden();
+    $this->actingAs($asds)->get(route('admin.distributions.index'))->assertForbidden();
 });
 
 test('admin can view learning material types page', function () {
@@ -148,6 +389,88 @@ test('admin can download school import template', function () {
     $response->assertHeader('content-disposition', 'attachment; filename=school-import-template.csv');
 });
 
+test('manager can import learning resource catalog titles from a csv file', function () {
+    $manager = User::factory()->create(['role' => 'manager']);
+    LearningResourceType::factory()->create(['name' => 'Book']);
+
+    $csv = UploadedFile::fake()->createWithContent('learning-resource-catalog.csv', implode("\n", [
+        'resource_type,title,author,publisher,description,is_active',
+        'Book,Mathematics 7,DepEd,Department of Education,Catalog title,1',
+    ]));
+
+    $response = $this
+        ->actingAs($manager)
+        ->postJson(route('admin.resource-titles.import.store'), [
+            'file' => $csv,
+        ]);
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('summary.imported', 1)
+        ->assertJsonPath('summary.updated', 0)
+        ->assertJsonPath('summary.skipped', 0);
+
+    $title = ResourceTitle::query()->sole();
+
+    expect($title->title)->toBe('Mathematics 7');
+    expect($title->publisher)->toBe('Department of Education');
+    expect($title->description)->toBe('Catalog title');
+});
+
+test('supply user can import equipment catalog entries from a csv file', function () {
+    $supply = User::factory()->create(['role' => 'supply']);
+
+    $csv = UploadedFile::fake()->createWithContent('equipment-catalog.csv', implode("\n", [
+        'item_name,category,brand,model,specifications,manufacturer,description,is_active',
+        'Laptop Computer,Laptop,Lenovo,ThinkPad,Portable computer,Lenovo,General-purpose laptop,1',
+    ]));
+
+    $response = $this
+        ->actingAs($supply)
+        ->postJson(route('admin.ict-equipment-catalog.import.store'), [
+            'file' => $csv,
+        ]);
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('summary.imported', 1)
+        ->assertJsonPath('summary.updated', 0)
+        ->assertJsonPath('summary.skipped', 0);
+
+    $equipment = IctEquipmentCatalogItem::query()->sole();
+
+    expect($equipment->item_name)->toBe('Laptop Computer');
+    expect($equipment->brand)->toBe('Lenovo');
+    expect($equipment->model)->toBe('ThinkPad');
+});
+
+test('school users cannot import catalog learning resources or equipment', function () {
+    $schoolUser = User::factory()->schoolUser()->create();
+    $file = UploadedFile::fake()->createWithContent('import.csv', 'school_id,title');
+
+    $this->actingAs($schoolUser)
+        ->postJson(route('admin.resource-titles.import.store'), ['file' => $file])
+        ->assertForbidden();
+
+    $this->actingAs($schoolUser)
+        ->postJson(route('admin.ict-equipment-catalog.import.store'), ['file' => $file])
+        ->assertForbidden();
+});
+
+test('authorized staff can download import templates', function () {
+    $librarian = User::factory()->create(['role' => 'librarian']);
+
+    $this->actingAs($librarian)
+        ->get(route('admin.resource-titles.import.template'))
+        ->assertOk()
+        ->assertHeader('content-disposition', 'attachment; filename=learning-resource-catalog-import-template.csv');
+
+    $this->actingAs($librarian)
+        ->get(route('admin.ict-equipment-catalog.import.template'))
+        ->assertOk()
+        ->assertHeader('content-disposition', 'attachment; filename=ict-equipment-catalog-import-template.csv');
+});
+
 test('admin can manage learning material types', function () {
     $admin = User::factory()->admin()->create();
 
@@ -155,7 +478,7 @@ test('admin can manage learning material types', function () {
         ->actingAs($admin)
         ->post(route('admin.learning-resource-types.store'), [
             'name' => 'Digital Module',
-            'category' => 'Digital',
+            'category' => 'Non-Print',
         ]);
 
     $createResponse->assertRedirect();
@@ -163,13 +486,13 @@ test('admin can manage learning material types', function () {
 
     $type = LearningResourceType::where('name', 'Digital Module')->firstOrFail();
 
-    expect($type->category)->toBe('Digital');
+    expect($type->category)->toBe('Non-Print');
 
     $updateResponse = $this
         ->actingAs($admin)
         ->put(route('admin.learning-resource-types.update', $type), [
             'name' => 'Digital Module',
-            'category' => 'Digital',
+            'category' => 'Non-Print',
             'is_active' => false,
         ]);
 

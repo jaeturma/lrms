@@ -1,4 +1,6 @@
 import { Head } from '@inertiajs/react';
+import { ChartColumn } from 'lucide-react';
+import { PageHeaderIcon } from '@/components/page-header-icon';
 
 type Option = {
     id: number;
@@ -37,8 +39,10 @@ type Props = {
         total_available: number;
         schools_in_shortage: number;
     };
-    equipmentByCategory: CategoryRow[];
-    equipmentByStatus: Record<string, number>;
+    ictEquipmentByCategory: CategoryRow[];
+    ictEquipmentByStatus: Record<string, number>;
+    otherEquipmentByCategory: CategoryRow[];
+    otherEquipmentByStatus: Record<string, number>;
     equipmentConditions: string[];
 };
 
@@ -61,8 +65,10 @@ export default function AdminReports({
     municipalities,
     resourceAdequacy,
     resourceSummary,
-    equipmentByCategory,
-    equipmentByStatus,
+    ictEquipmentByCategory,
+    ictEquipmentByStatus,
+    otherEquipmentByCategory,
+    otherEquipmentByStatus,
     equipmentConditions,
 }: Props) {
     const selectedSchoolYear = schoolYears.find((year) => year.id === filters.school_year_id);
@@ -73,7 +79,12 @@ export default function AdminReports({
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-7xl space-y-6">
-                    <header className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                    <header className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+                        <PageHeaderIcon
+                            icon={ChartColumn}
+                            className="bg-orange-950 text-orange-400 dark:bg-orange-900/60 dark:text-orange-300"
+                        />
+                        <div className="min-w-0 flex-1">
                         <h1 className="text-2xl font-bold text-foreground">Division Reports</h1>
                         <p className="text-sm text-muted-foreground">
                             Learning resource adequacy and equipment condition summaries across the division
@@ -121,6 +132,7 @@ export default function AdminReports({
                                 Filter
                             </button>
                         </form>
+                        </div>
                     </header>
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -201,76 +213,110 @@ export default function AdminReports({
                         </div>
                     </section>
 
-                    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                                <h2 className="text-lg font-semibold text-foreground">Equipment Condition Summary</h2>
-                                <p className="text-sm text-muted-foreground">
-                                    Registered equipment grouped by category and physical condition.
-                                </p>
-                            </div>
-                            <a
-                                href={exportUrl('/app/admin/reports/equipment/export', filters)}
-                                className="h-9 rounded-md border border-border bg-background px-4 text-sm leading-9 text-foreground hover:bg-muted"
-                            >
-                                Export CSV
-                            </a>
-                        </div>
+                    <EquipmentConditionSummary
+                        title="ICT Equipment Condition Summary"
+                        description="Registered ICT equipment grouped by category and physical condition."
+                        exportHref={exportUrl('/app/admin/reports/ict-equipment/export', filters)}
+                        byStatus={ictEquipmentByStatus}
+                        byCategory={ictEquipmentByCategory}
+                        conditions={equipmentConditions}
+                    />
 
-                        {Object.keys(equipmentByStatus).length > 0 && (
-                            <div className="mb-4 flex flex-wrap gap-2 text-xs">
-                                {Object.entries(equipmentByStatus).map(([status, total]) => (
-                                    <span
-                                        key={status}
-                                        className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-muted-foreground"
-                                    >
-                                        <span className="font-semibold text-foreground">{total.toLocaleString()}</span>
-                                        {status}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="overflow-x-auto rounded-xl border border-border">
-                            <table className="min-w-full text-sm">
-                                <thead className="bg-muted text-left text-foreground">
-                                    <tr>
-                                        <th className="px-3 py-2">Category</th>
-                                        {equipmentConditions.map((condition) => (
-                                            <th key={condition} className="px-3 py-2 text-right">
-                                                {condition}
-                                            </th>
-                                        ))}
-                                        <th className="px-3 py-2 text-right">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {equipmentByCategory.length === 0 && (
-                                        <tr>
-                                            <td className="px-3 py-6 text-center text-muted-foreground" colSpan={equipmentConditions.length + 2}>
-                                                No equipment found for the selected filters.
-                                            </td>
-                                        </tr>
-                                    )}
-                                    {equipmentByCategory.map((row) => (
-                                        <tr key={row.category} className="border-t border-border">
-                                            <td className="px-3 py-2 font-medium text-foreground">{row.category}</td>
-                                            {equipmentConditions.map((condition) => (
-                                                <td key={condition} className="px-3 py-2 text-right text-muted-foreground">
-                                                    {(row.conditions[condition] ?? 0).toLocaleString()}
-                                                </td>
-                                            ))}
-                                            <td className="px-3 py-2 text-right font-semibold text-foreground">
-                                                {row.total.toLocaleString()}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
+                    <EquipmentConditionSummary
+                        title="Other Equipment Condition Summary"
+                        description="Registered TVL, ALS, Library, SPED, Sports, and other equipment grouped by category and physical condition."
+                        exportHref={exportUrl('/app/admin/reports/other-equipment/export', filters)}
+                        byStatus={otherEquipmentByStatus}
+                        byCategory={otherEquipmentByCategory}
+                        conditions={equipmentConditions}
+                    />
                 </div>
             </main>
         </>
+    );
+}
+
+function EquipmentConditionSummary({
+    title,
+    description,
+    exportHref,
+    byStatus,
+    byCategory,
+    conditions,
+}: {
+    title: string;
+    description: string;
+    exportHref: string;
+    byStatus: Record<string, number>;
+    byCategory: CategoryRow[];
+    conditions: string[];
+}) {
+    return (
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+                    <p className="text-sm text-muted-foreground">{description}</p>
+                </div>
+                <a
+                    href={exportHref}
+                    className="h-9 rounded-md border border-border bg-background px-4 text-sm leading-9 text-foreground hover:bg-muted"
+                >
+                    Export CSV
+                </a>
+            </div>
+
+            {Object.keys(byStatus).length > 0 && (
+                <div className="mb-4 flex flex-wrap gap-2 text-xs">
+                    {Object.entries(byStatus).map(([status, total]) => (
+                        <span
+                            key={status}
+                            className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-muted-foreground"
+                        >
+                            <span className="font-semibold text-foreground">{total.toLocaleString()}</span>
+                            {status}
+                        </span>
+                    ))}
+                </div>
+            )}
+
+            <div className="overflow-x-auto rounded-xl border border-border">
+                <table className="min-w-full text-sm">
+                    <thead className="bg-muted text-left text-foreground">
+                        <tr>
+                            <th className="px-3 py-2">Category</th>
+                            {conditions.map((condition) => (
+                                <th key={condition} className="px-3 py-2 text-right">
+                                    {condition}
+                                </th>
+                            ))}
+                            <th className="px-3 py-2 text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {byCategory.length === 0 && (
+                            <tr>
+                                <td className="px-3 py-6 text-center text-muted-foreground" colSpan={conditions.length + 2}>
+                                    No equipment found for the selected filters.
+                                </td>
+                            </tr>
+                        )}
+                        {byCategory.map((row) => (
+                            <tr key={row.category} className="border-t border-border">
+                                <td className="px-3 py-2 font-medium text-foreground">{row.category}</td>
+                                {conditions.map((condition) => (
+                                    <td key={condition} className="px-3 py-2 text-right text-muted-foreground">
+                                        {(row.conditions[condition] ?? 0).toLocaleString()}
+                                    </td>
+                                ))}
+                                <td className="px-3 py-2 text-right font-semibold text-foreground">
+                                    {row.total.toLocaleString()}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </section>
     );
 }

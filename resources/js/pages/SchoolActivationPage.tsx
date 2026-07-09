@@ -4,6 +4,14 @@ import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 
 type School = {
@@ -83,6 +91,7 @@ export default function SchoolActivationPage({
     });
 
     const [agreeToTerms, setAgreeToTerms] = useState(false);
+    const [showManualReviewModal, setShowManualReviewModal] = useState(false);
 
     const filteredDistricts = districts.filter(
         (district) => district.municipality_id === Number(data.municipality_id),
@@ -98,7 +107,21 @@ export default function SchoolActivationPage({
     const schoolNameDisplay = schoolData.school_name || 'School name not found';
 
     const sendOtp = () => {
-        post(activationPath);
+        post(activationPath, {
+            onSuccess: () => {
+                if (!schoolData.is_activated && !otpEnabled) {
+                    setShowManualReviewModal(true);
+                }
+            },
+        });
+    };
+
+    const closeManualReviewModal = (open: boolean) => {
+        setShowManualReviewModal(open);
+
+        if (!open) {
+            window.location.href = '/login';
+        }
     };
 
     const verifyOtp = () => {
@@ -119,21 +142,7 @@ export default function SchoolActivationPage({
      * Format phone number to 09xxxxxxxxx format
      */
     const formatPhoneNumber = (value: string): string => {
-        // Remove all non-digits
-        const digits = value.replace(/\D/g, '');
-
-        // If starts with 9, prepend 0
-        if (digits.startsWith('9')) {
-            return '0' + digits.slice(0, 10);
-        }
-
-        // If starts with 09, keep as is
-        if (digits.startsWith('09')) {
-            return digits.slice(0, 11);
-        }
-
-        // Otherwise, prepend 09
-        return '09' + digits.slice(0, 9);
+        return value.replace(/[^\d+\-\s()]/g, '').slice(0, 15);
     };
 
     /**
@@ -142,8 +151,9 @@ export default function SchoolActivationPage({
     const handleUppercaseInput = (
         value: string,
         fieldName: string,
+        maxLength = 50,
     ): void => {
-        const uppercase = value.toUpperCase().slice(0, 50);
+        const uppercase = value.toUpperCase().slice(0, maxLength);
         setData(fieldName as any, uppercase);
     };
 
@@ -159,7 +169,7 @@ export default function SchoolActivationPage({
                             ? 'Update your school details before proceeding to learning resources.'
                             : canUseOtp
                               ? 'Confirm your information, receive a 6-digit OTP, then verify within 5 minutes to activate.'
-                              : 'Confirm your information and submit an activation request. An admin will review and activate your account manually.'}
+                              : 'Confirm your information and submit an activation request. Please check your email within 24 hours — you will receive your initial login credentials once your account has been activated.'}
                     </p>
 
                     {showCredentials ? (
@@ -296,9 +306,9 @@ export default function SchoolActivationPage({
                                 <Field label="School Head *" error={errors.school_head}>
                                     <Input
                                         value={data.school_head}
-                                        maxLength={50}
+                                        maxLength={80}
                                         onChange={(event) =>
-                                            handleUppercaseInput(event.target.value, 'school_head')
+                                            handleUppercaseInput(event.target.value, 'school_head', 80)
                                         }
                                         placeholder="ENTER SCHOOL HEAD NAME"
                                         required
@@ -340,7 +350,7 @@ export default function SchoolActivationPage({
                                     <Input
                                         type="tel"
                                         value={data.primary_mobile_no}
-                                        maxLength={11}
+                                        maxLength={15}
                                         onChange={(event) => {
                                             const formatted = formatPhoneNumber(event.target.value);
                                             setData('primary_mobile_no', formatted);
@@ -356,7 +366,7 @@ export default function SchoolActivationPage({
                                     <Input
                                         type="tel"
                                         value={data.secondary_mobile_no}
-                                        maxLength={11}
+                                        maxLength={15}
                                         onChange={(event) => {
                                             const formatted = formatPhoneNumber(event.target.value);
                                             setData('secondary_mobile_no', formatted);
@@ -473,6 +483,24 @@ export default function SchoolActivationPage({
                     )}
                 </div>
             </main>
+
+            <Dialog open={showManualReviewModal} onOpenChange={closeManualReviewModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Activation Request Submitted</DialogTitle>
+                        <DialogDescription>
+                            Please check your email within 24 hours. Your school account will be reviewed by the
+                            division office, and you will receive your initial login credentials by email once it
+                            has been activated.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button type="button" onClick={() => closeManualReviewModal(false)}>
+                            Got it
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

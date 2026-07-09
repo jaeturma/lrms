@@ -24,6 +24,10 @@ class LearningResource extends Model
         'quantity_delivered',
         'quantity_with_issue_defect',
         'remarks',
+        'source',
+        'supplier',
+        'date_delivered',
+        'ier_no',
         'publisher',
         'language',
         'subject',
@@ -41,6 +45,7 @@ class LearningResource extends Model
         return [
             'copyright_year' => 'integer',
             'pages' => 'integer',
+            'date_delivered' => 'date',
         ];
     }
 

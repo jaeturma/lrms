@@ -1,5 +1,14 @@
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { BookOpen } from 'lucide-react';
 import { FormEvent, useRef, useState } from 'react';
+import { EmptyTableRow } from '@/components/empty-state';
+import InputError from '@/components/input-error';
+import { PageHeader } from '@/components/page-header';
+import { Pagination } from '@/components/pagination';
+import { SearchInput } from '@/components/search-input';
+import { StatusBadge } from '@/components/status-badge';
+import { Button } from '@/components/ui/button';
+import http from '@/lib/http';
 
 type Option = {
     id: number;
@@ -67,6 +76,14 @@ type TitleForm = {
     _method?: string;
 };
 
+type ImportSummary = {
+    total_rows: number;
+    imported: number;
+    updated: number;
+    skipped: number;
+    errors: Array<{ row: number; message: string }>;
+};
+
 const emptyForm: TitleForm = {
     learning_resource_type_id: '',
     grade_level_id: '',
@@ -90,6 +107,10 @@ const emptyForm: TitleForm = {
 export default function AdminResourceTitles({ filters, resourceTitles, resourceTypes, gradeLevels }: Props) {
     const { errors } = usePage().props as { errors: Record<string, string> };
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [importing, setImporting] = useState(false);
+    const [importError, setImportError] = useState<string | undefined>();
+    const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
     const coverInputRef = useRef<HTMLInputElement>(null);
     const attachmentInputRef = useRef<HTMLInputElement>(null);
     const form = useForm<TitleForm>(emptyForm);
@@ -142,6 +163,37 @@ export default function AdminResourceTitles({ filters, resourceTitles, resourceT
         }
     };
 
+    const submitImport = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        if (!selectedFile) {
+            setImportError('Please select a CSV or Excel .xlsx file.');
+
+            return;
+        }
+
+        setImporting(true);
+        setImportError(undefined);
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        try {
+            const response = await http.post('/app/admin/resource-titles/import', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Accept: 'application/json',
+                },
+            });
+
+            setImportSummary(response.data.summary);
+        } catch {
+            setImportError('Import failed. Check the template columns and try again.');
+        } finally {
+            setImporting(false);
+        }
+    };
+
     const toggleActive = (row: ResourceTitleRow) => {
         router.post(
             `/app/admin/resource-titles/${row.id}`,
@@ -181,13 +233,54 @@ export default function AdminResourceTitles({ filters, resourceTitles, resourceT
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-7xl space-y-6">
-                    <header className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <h1 className="text-2xl font-bold text-foreground">Learning Resource Catalog</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Division-managed master list of learning resource titles. Schools pick from this catalog and
-                            only report their quantities — details, covers, and files come from here.
-                        </p>
-                    </header>
+                    <PageHeader
+                        icon={BookOpen}
+                        iconClassName="bg-indigo-950 text-indigo-400 dark:bg-indigo-900/60 dark:text-indigo-300"
+                        title="Learning Resource Catalog"
+                        description="Division-managed master list of learning resource titles. Schools pick from this catalog and only report their quantities — details, covers, and files come from here."
+                    />
+
+                    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h2 className="text-lg font-semibold text-foreground">Import Catalog Titles</h2>
+                                <p className="text-sm text-muted-foreground">Upload CSV or Excel .xlsx entries for the master learning resource catalog.</p>
+                            </div>
+                            <a href="/app/admin/resource-titles/import/template" className="text-sm font-semibold underline">
+                                Download Template
+                            </a>
+                        </div>
+                        <form onSubmit={submitImport} className="flex flex-wrap items-center gap-3">
+                            <input
+                                type="file"
+                                accept=".csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                            />
+                            <Button type="submit" disabled={importing}>
+                                {importing ? 'Importing...' : 'Import File'}
+                            </Button>
+                        </form>
+                        <InputError message={importError} />
+                        {importSummary && (
+                            <div className="mt-4 rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground">
+                                <div className="flex flex-wrap gap-4">
+                                    <span>Total: {importSummary.total_rows}</span>
+                                    <span>Imported: {importSummary.imported}</span>
+                                    <span>Updated: {importSummary.updated}</span>
+                                    <span>Skipped: {importSummary.skipped}</span>
+                                </div>
+                                {importSummary.errors.length > 0 && (
+                                    <ul className="mt-2 list-disc pl-5 text-red-700">
+                                        {importSummary.errors.slice(0, 8).map((item, index) => (
+                                            <li key={index}>
+                                                Row {item.row}: {item.message}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        )}
+                    </section>
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <h2 className="mb-4 text-lg font-semibold text-foreground">
@@ -363,11 +456,11 @@ export default function AdminResourceTitles({ filters, resourceTitles, resourceT
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <form method="get" action="/app/admin/resource-titles" className="mb-4 flex flex-wrap gap-2">
-                            <input
+                            <SearchInput
                                 name="search"
                                 defaultValue={filters.search ?? ''}
                                 placeholder="Search title, author, publisher, ISBN"
-                                className="h-9 w-72 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                                containerClassName="w-72"
                             />
                             <select
                                 name="learning_resource_type_id"
@@ -405,11 +498,7 @@ export default function AdminResourceTitles({ filters, resourceTitles, resourceT
                                 </thead>
                                 <tbody>
                                     {resourceTitles.data.length === 0 && (
-                                        <tr>
-                                            <td className="px-3 py-6 text-center text-muted-foreground" colSpan={9}>
-                                                No titles in the catalog yet.
-                                            </td>
-                                        </tr>
+                                        <EmptyTableRow colSpan={9} message="No titles in the catalog yet." />
                                     )}
                                     {resourceTitles.data.map((row) => (
                                         <tr key={row.id} className="border-t border-border">
@@ -465,11 +554,9 @@ export default function AdminResourceTitles({ filters, resourceTitles, resourceT
                                             </td>
                                             <td className="px-3 py-2 text-right text-muted-foreground">{row.schools_using}</td>
                                             <td className="px-3 py-2">
-                                                <span
-                                                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${row.is_active ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}
-                                                >
+                                                <StatusBadge tone={row.is_active ? 'success' : 'neutral'}>
                                                     {row.is_active ? 'active' : 'inactive'}
-                                                </span>
+                                                </StatusBadge>
                                             </td>
                                             <td className="px-3 py-2">
                                                 <div className="flex justify-end gap-1.5">
@@ -503,26 +590,7 @@ export default function AdminResourceTitles({ filters, resourceTitles, resourceT
                             </table>
                         </div>
 
-                        {resourceTitles.links.length > 3 && (
-                            <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                                {resourceTitles.links.map((link, index) => (
-                                    <span key={index}>
-                                        {link.url ? (
-                                            <Link
-                                                href={link.url}
-                                                className={`rounded border px-3 py-1 ${link.active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground'}`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        ) : (
-                                            <span
-                                                className="rounded border border-border bg-card px-3 py-1 text-muted-foreground"
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        )}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                        <Pagination links={resourceTitles.links} className="mt-4" />
                     </section>
                 </div>
             </main>

@@ -1,4 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { School as SchoolIcon } from 'lucide-react';
+import { PageHeaderIcon } from '@/components/page-header-icon';
 
 type School = {
     school_id: string;
@@ -81,6 +83,10 @@ export default function AdminSchoolShow({
         router.post(`/app/admin/schools/${school.school_id}/manual-activate`);
     };
 
+    const sendCredentials = () => {
+        router.post(`/app/admin/schools/${school.school_id}/send-credentials`, {}, { preserveScroll: true });
+    };
+
     return (
         <>
             <Head title={`${school.school_name} - ${school.school_id}`} />
@@ -88,7 +94,11 @@ export default function AdminSchoolShow({
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-6xl space-y-6">
                     <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <div>
+                        <div className="flex items-center gap-4">
+                            <PageHeaderIcon
+                                icon={SchoolIcon}
+                                className="bg-blue-950 text-blue-400 dark:bg-blue-900/60 dark:text-blue-300"
+                            />
                             <h1 className="text-2xl font-bold text-foreground">{school.school_name} - {school.school_id}</h1>
                         </div>
                         <div className="flex items-center gap-2">
@@ -126,6 +136,13 @@ export default function AdminSchoolShow({
                                 <p><span className="font-semibold">Email:</span> {generatedEmail}</p>
                                 <p><span className="font-semibold">Password:</span> {generatedPassword}</p>
                             </div>
+                            <button
+                                type="button"
+                                onClick={sendCredentials}
+                                className="mt-4 rounded-md border border-emerald-400 bg-white px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
+                            >
+                                Send Credentials via Email
+                            </button>
                         </section>
                     )}
 

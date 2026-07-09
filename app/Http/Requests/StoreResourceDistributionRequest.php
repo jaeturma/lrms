@@ -25,9 +25,11 @@ class StoreResourceDistributionRequest extends FormRequest
     {
         return [
             'school_id' => ['required', 'integer', Rule::exists('schools', 'id')->whereNull('deleted_at')],
-            'learning_resource_type_id' => ['required', 'integer', 'exists:learning_resource_types,id'],
-            'title' => ['required', 'string', 'max:255'],
-            'publisher' => ['nullable', 'string', 'max:255'],
+            'resource_title_id' => [
+                'required',
+                'integer',
+                Rule::exists('resource_titles', 'id')->where('is_active', true),
+            ],
             'quantity' => ['required', 'integer', 'min:1', 'max:100000'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];

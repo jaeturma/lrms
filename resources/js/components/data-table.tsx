@@ -12,8 +12,9 @@ import {
 import type {ColumnDef, ColumnFiltersState, SortingState} from '@tanstack/react-table';
 import { ChevronDown, ChevronUp, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
+import { EmptyTableRow } from '@/components/empty-state';
+import { SearchInput } from '@/components/search-input';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
     Table,
     TableBody,
@@ -78,11 +79,11 @@ export function DataTable<TData, TValue>({
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
-                <Input
+                <SearchInput
                     placeholder={searchPlaceholder}
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
-                    className="max-w-xs"
+                    containerClassName="max-w-xs w-full"
                 />
                 <span className="text-sm text-muted-foreground">
                     {table.getFilteredRowModel().rows.length} record
@@ -141,14 +142,7 @@ export function DataTable<TData, TValue>({
                                 </TableRow>
                             ))
                         ) : (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={columns.length}
-                                    className="h-24 text-center text-muted-foreground"
-                                >
-                                    No records found.
-                                </TableCell>
-                            </TableRow>
+                            <EmptyTableRow colSpan={columns.length} message="No records found." />
                         )}
                     </TableBody>
                 </Table>

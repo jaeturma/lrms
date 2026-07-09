@@ -2,8 +2,14 @@
 
 use App\Models\Barangay;
 use App\Models\District;
+use App\Models\Enrollment;
+use App\Models\GradeLevel;
+use App\Models\IctEquipment;
+use App\Models\LearningResource;
 use App\Models\Municipality;
+use App\Models\ResourceDistribution;
 use App\Models\School;
+use App\Models\SchoolYear;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -30,7 +36,72 @@ test('authenticated users can visit the dashboard', function () {
             ->has('school')
             ->where('school.data.school_id', $school->school_id)
             ->where('school.data.school_name', $school->school_name)
-            ->has('resourceSummary')
+            ->has('stats')
+            ->has('enrollmentByGrade')
+            ->has('equipmentCondition')
+        );
+});
+
+test('school dashboard aggregates reflect the schools own data', function () {
+    $school = School::factory()->create([
+        'is_activated' => true,
+        'school_head' => 'Aggregate Head',
+    ]);
+    $user = User::factory()->schoolUser($school)->create();
+    $school->update(['user_id' => $user->id, 'email' => $user->email]);
+
+    $otherSchool = School::factory()->create(['is_activated' => true]);
+
+    $schoolYear = SchoolYear::factory()->active()->create();
+    $grade = GradeLevel::factory()->create(['name' => 'Grade 4', 'sort_order' => 4]);
+
+    Enrollment::factory()->create([
+        'school_id' => $school->id,
+        'school_year_id' => $schoolYear->id,
+        'grade_level_id' => $grade->id,
+        'male_count' => 25,
+        'female_count' => 15,
+    ]);
+    Enrollment::factory()->create([
+        'school_id' => $otherSchool->id,
+        'school_year_id' => $schoolYear->id,
+        'grade_level_id' => $grade->id,
+        'male_count' => 99,
+        'female_count' => 99,
+    ]);
+
+    LearningResource::factory()->create([
+        'school_id' => $school->id,
+        'quantity_delivered' => 40,
+        'quantity_with_issue_defect' => 4,
+    ]);
+
+    IctEquipment::factory()->create(['school_id' => $school->id, 'condition' => 'Good']);
+    IctEquipment::factory()->create(['school_id' => $school->id, 'condition' => 'Beyond Repair']);
+    IctEquipment::factory()->create(['school_id' => $otherSchool->id, 'condition' => 'Good']);
+
+    ResourceDistribution::factory()->create(['school_id' => $school->id, 'status' => 'pending']);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('SchoolDashboard')
+            ->where('stats.total_learners', 40)
+            ->where('stats.male_learners', 25)
+            ->where('stats.female_learners', 15)
+            ->where('stats.copies_delivered', 40)
+            ->where('stats.copies_with_defects', 4)
+            ->where('stats.defect_rate', 10)
+            ->where('stats.total_equipment', 2)
+            ->where('stats.equipment_needing_repair', 1)
+            ->where('stats.pending_distributions', 1)
+            ->where('enrollmentByGrade.0.grade', 'Grade 4')
+            ->where('enrollmentByGrade.0.male', 25)
+            ->where('enrollmentByGrade.0.female', 15)
+            ->where('equipmentCondition.0.type', 'ICT Equipment')
+            ->where('equipmentCondition.0.good', 1)
+            ->where('equipmentCondition.0.needs_attention', 1)
         );
 });
 

@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { Eye, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Download, Eye, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +23,13 @@ type LearningResource = {
     quantity_delivered: number;
     quantity_with_issue_defect: number;
     remarks?: string | null;
+    source?: string | null;
+    supplier?: string | null;
+    date_delivered?: string | null;
+    ier_no?: string | null;
+    cover_image_url?: string | null;
+    attachment_url?: string | null;
+    media_url?: string | null;
 };
 
 type LearningResourceForm = {
@@ -35,6 +42,13 @@ type LearningResourceForm = {
     quantity_delivered: number;
     quantity_with_issue_defect: number;
     remarks: string;
+    source: string;
+    supplier: string;
+    date_delivered: string;
+    ier_no: string;
+    cover_image_url: string | null;
+    attachment_url: string | null;
+    media_url: string | null;
 };
 
 type LearningResourceTypeOption = {
@@ -79,6 +93,13 @@ export default function SchoolLearningResources({ learningResources, learningRes
             quantity_delivered: Number(resource.quantity_delivered) || 1,
             quantity_with_issue_defect: Number(resource.quantity_with_issue_defect) || 0,
             remarks: resource.remarks ?? '',
+            source: resource.source ?? '',
+            supplier: resource.supplier ?? '',
+            date_delivered: resource.date_delivered ?? '',
+            ier_no: resource.ier_no ?? '',
+            cover_image_url: resource.cover_image_url ?? null,
+            attachment_url: resource.attachment_url ?? null,
+            media_url: resource.media_url ?? null,
         }));
     }, [learningResources]);
 
@@ -100,6 +121,13 @@ export default function SchoolLearningResources({ learningResources, learningRes
         quantity_delivered: 1,
         quantity_with_issue_defect: 0,
         remarks: '',
+        source: '',
+        supplier: '',
+        date_delivered: '',
+        ier_no: '',
+        cover_image_url: null,
+        attachment_url: null,
+        media_url: null,
     });
 
     const selectedCatalogTitle = form.resource_title_id === ''
@@ -134,6 +162,10 @@ export default function SchoolLearningResources({ learningResources, learningRes
                     quantity_delivered: Number(row.quantity_delivered),
                     quantity_with_issue_defect: Number(row.quantity_with_issue_defect),
                     remarks: row.remarks,
+                    source: row.source || null,
+                    supplier: row.supplier || null,
+                    date_delivered: row.date_delivered || null,
+                    ier_no: row.ier_no || null,
                 })),
             };
 
@@ -156,6 +188,13 @@ export default function SchoolLearningResources({ learningResources, learningRes
                     quantity_delivered: Number(resource.quantity_delivered) || 1,
                     quantity_with_issue_defect: Number(resource.quantity_with_issue_defect) || 0,
                     remarks: resource.remarks ?? '',
+                    source: resource.source ?? '',
+                    supplier: resource.supplier ?? '',
+                    date_delivered: resource.date_delivered ?? '',
+                    ier_no: resource.ier_no ?? '',
+                    cover_image_url: resource.cover_image_url ?? null,
+                    attachment_url: resource.attachment_url ?? null,
+                    media_url: resource.media_url ?? null,
                 })),
             );
             setStatus(response.data.message ?? 'Saved.');
@@ -181,6 +220,13 @@ export default function SchoolLearningResources({ learningResources, learningRes
             quantity_delivered: 1,
             quantity_with_issue_defect: 0,
             remarks: '',
+            source: '',
+            supplier: '',
+            date_delivered: '',
+            ier_no: '',
+            cover_image_url: null,
+            attachment_url: null,
+            media_url: null,
         });
         setDialogOpen(true);
     };
@@ -204,6 +250,9 @@ export default function SchoolLearningResources({ learningResources, learningRes
             title: option.title,
             publisher: option.publisher ?? '',
             resource_type: option.resource_type ?? '',
+            cover_image_url: option.cover_image_url,
+            attachment_url: option.attachment_url,
+            media_url: option.media_url,
         }));
     };
 
@@ -295,22 +344,66 @@ export default function SchoolLearningResources({ learningResources, learningRes
                                     return (
                                         <tr key={`${row.id ?? 'new'}-${index}`} className="border-t border-border">
                                             <td className="px-3 py-2">{row.resource_type}</td>
-                                            <td className="px-3 py-2">{row.title}</td>
+                                            <td className="px-3 py-2">
+                                                <div className="flex items-center gap-2.5">
+                                                    {row.cover_image_url ? (
+                                                        <img
+                                                            src={row.cover_image_url}
+                                                            alt={`Cover of ${row.title}`}
+                                                            className="h-12 w-9 shrink-0 rounded object-cover shadow-sm"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex h-12 w-9 shrink-0 items-center justify-center rounded bg-muted text-[9px] text-muted-foreground">
+                                                            No cover
+                                                        </div>
+                                                    )}
+                                                    <span className="font-medium text-foreground">{row.title}</span>
+                                                </div>
+                                            </td>
                                             <td className="px-3 py-2">{row.quantity_delivered}</td>
                                             <td className="px-3 py-2">{row.quantity_with_issue_defect}</td>
                                             <td className="px-3 py-2">
                                                 <div className="flex gap-2">
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => openViewDialog(row)}>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="border-sky-300 text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-400 dark:hover:bg-sky-950"
+                                                        title="View details"
+                                                        onClick={() => openViewDialog(row)}
+                                                    >
                                                         <Eye className="h-3.5 w-3.5" />
                                                     </Button>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => openEditDialog(absoluteIndex)}>
+                                                    {row.attachment_url && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
+                                                            title="Download attachment"
+                                                            asChild
+                                                        >
+                                                            <a href={row.attachment_url} target="_blank" rel="noreferrer" download>
+                                                                <Download className="h-3.5 w-3.5" />
+                                                            </a>
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950"
+                                                        title="Edit entry"
+                                                        onClick={() => openEditDialog(absoluteIndex)}
+                                                    >
                                                         <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
                                                     <Button
                                                         type="button"
                                                         variant="outline"
                                                         size="sm"
-                                                        className="border-red-300 text-red-700 hover:bg-red-50"
+                                                        className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+                                                        title="Delete entry"
                                                         onClick={() => removeRow(absoluteIndex)}
                                                     >
                                                         <Trash2 className="h-3.5 w-3.5" />
@@ -364,7 +457,7 @@ export default function SchoolLearningResources({ learningResources, learningRes
             </div>
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent>
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
                     <DialogHeader>
                         <DialogTitle>{editingIndex === null ? 'Add Learning Resource' : 'Edit Learning Resource'}</DialogTitle>
                         <DialogDescription>
@@ -441,7 +534,7 @@ export default function SchoolLearningResources({ learningResources, learningRes
                         )}
 
                         {!selectedCatalogTitle && (
-                            <>
+                            <div className="grid gap-3 lg:grid-cols-3">
                                 <div>
                                     <label htmlFor="resource_type" className="mb-1 block text-sm font-medium text-foreground">
                                         Type *
@@ -492,7 +585,7 @@ export default function SchoolLearningResources({ learningResources, learningRes
                                         required
                                     />
                                 </div>
-                            </>
+                            </div>
                         )}
 
                         <div className="grid gap-3 sm:grid-cols-2">
@@ -546,6 +639,51 @@ export default function SchoolLearningResources({ learningResources, learningRes
                                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             />
                         </div>
+
+                        <p className="text-sm font-semibold text-foreground">Delivery Details</p>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <div>
+                                <label htmlFor="source" className="mb-1 block text-sm font-medium text-foreground">
+                                    Source
+                                </label>
+                                <Input
+                                    id="source"
+                                    value={form.source}
+                                    onChange={(event) => setForm((current) => ({ ...current, source: event.target.value }))}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="supplier" className="mb-1 block text-sm font-medium text-foreground">
+                                    Supplier
+                                </label>
+                                <Input
+                                    id="supplier"
+                                    value={form.supplier}
+                                    onChange={(event) => setForm((current) => ({ ...current, supplier: event.target.value }))}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="date_delivered" className="mb-1 block text-sm font-medium text-foreground">
+                                    Date Delivered
+                                </label>
+                                <Input
+                                    id="date_delivered"
+                                    type="date"
+                                    value={form.date_delivered}
+                                    onChange={(event) => setForm((current) => ({ ...current, date_delivered: event.target.value }))}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="ier_no" className="mb-1 block text-sm font-medium text-foreground">
+                                    IER No.
+                                </label>
+                                <Input
+                                    id="ier_no"
+                                    value={form.ier_no}
+                                    onChange={(event) => setForm((current) => ({ ...current, ier_no: event.target.value }))}
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     <DialogFooter>
@@ -575,25 +713,108 @@ export default function SchoolLearningResources({ learningResources, learningRes
             </Dialog>
 
             <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-3xl">
                     <DialogHeader>
                         <DialogTitle>Learning Resource Details</DialogTitle>
                         <DialogDescription>View the complete details of this learning resource record.</DialogDescription>
                     </DialogHeader>
 
                     {viewRow && (
-                        <div className="grid gap-2 text-sm text-foreground">
-                            <p><span className="font-semibold text-foreground">Type:</span> {viewRow.resource_type}</p>
-                            <p><span className="font-semibold text-foreground">Title:</span> {viewRow.title}</p>
-                            <p><span className="font-semibold text-foreground">Publisher:</span> {viewRow.publisher}</p>
-                            <p><span className="font-semibold text-foreground">Quantity Delivered:</span> {viewRow.quantity_delivered}</p>
-                            <p><span className="font-semibold text-foreground">Quantity with Issue:</span> {viewRow.quantity_with_issue_defect}</p>
-                            <p><span className="font-semibold text-foreground">Remarks:</span> {viewRow.remarks || '-'}</p>
+                        <div className="grid gap-6 sm:grid-cols-[280px_minmax(0,1fr)]">
+                            <div className="space-y-3">
+                                {viewRow.cover_image_url ? (
+                                    <img
+                                        src={viewRow.cover_image_url}
+                                        alt={`Cover of ${viewRow.title}`}
+                                        className="aspect-[3/4] w-full rounded-xl border border-border object-cover shadow-md"
+                                    />
+                                ) : (
+                                    <div className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border bg-muted/60 text-center">
+                                        <span className="text-sm font-medium text-muted-foreground">No cover image</span>
+                                        <span className="px-4 text-xs text-muted-foreground">
+                                            Covers come from the division catalog.
+                                        </span>
+                                    </div>
+                                )}
+
+                                {viewRow.attachment_url && (
+                                    <Button type="button" className="w-full bg-emerald-600 text-white hover:bg-emerald-700" asChild>
+                                        <a href={viewRow.attachment_url} target="_blank" rel="noreferrer" download>
+                                            <Download className="mr-1 h-4 w-4" />
+                                            Download PDF
+                                        </a>
+                                    </Button>
+                                )}
+
+                                {viewRow.media_url && (
+                                    <Button type="button" variant="outline" className="w-full" asChild>
+                                        <a href={viewRow.media_url} target="_blank" rel="noreferrer">
+                                            <Eye className="mr-1 h-4 w-4" />
+                                            View Media
+                                        </a>
+                                    </Button>
+                                )}
+                            </div>
+
+                            <div className="min-w-0 space-y-4">
+                                <div>
+                                    <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                                        {viewRow.resource_type || 'Uncategorized'}
+                                    </span>
+                                    <h3 className="mt-2 text-lg font-semibold leading-snug text-foreground">{viewRow.title}</h3>
+                                    <p className="text-sm text-muted-foreground">{viewRow.publisher || '-'}</p>
+                                </div>
+
+                                <dl className="grid grid-cols-2 gap-3">
+                                    <div className="rounded-lg border border-border bg-muted/40 p-3">
+                                        <dt className="text-xs text-muted-foreground">Quantity Delivered</dt>
+                                        <dd className="text-xl font-semibold text-foreground">
+                                            {viewRow.quantity_delivered.toLocaleString()}
+                                        </dd>
+                                    </div>
+                                    <div className="rounded-lg border border-border bg-muted/40 p-3">
+                                        <dt className="text-xs text-muted-foreground">With Issue / Defect</dt>
+                                        <dd className={`text-xl font-semibold ${viewRow.quantity_with_issue_defect > 0 ? 'text-destructive' : 'text-foreground'}`}>
+                                            {viewRow.quantity_with_issue_defect.toLocaleString()}
+                                        </dd>
+                                    </div>
+                                </dl>
+
+                                <div>
+                                    <p className="text-xs font-medium text-muted-foreground">Remarks</p>
+                                    <p className="mt-0.5 text-sm text-foreground">{viewRow.remarks || 'No remarks.'}</p>
+                                </div>
+
+                                <dl className="grid grid-cols-2 gap-3 text-sm">
+                                    <div>
+                                        <dt className="text-xs font-medium text-muted-foreground">Source</dt>
+                                        <dd className="text-foreground">{viewRow.source || '-'}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-xs font-medium text-muted-foreground">Supplier</dt>
+                                        <dd className="text-foreground">{viewRow.supplier || '-'}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-xs font-medium text-muted-foreground">Date Delivered</dt>
+                                        <dd className="text-foreground">{viewRow.date_delivered || '-'}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-xs font-medium text-muted-foreground">IER No.</dt>
+                                        <dd className="text-foreground">{viewRow.ier_no || '-'}</dd>
+                                    </div>
+                                </dl>
+
+                                <p className="text-xs text-muted-foreground">
+                                    {viewRow.resource_title_id !== ''
+                                        ? 'Details provided by the division resource catalog.'
+                                        : 'Manually encoded by the school (not in the division catalog).'}
+                                </p>
+                            </div>
                         </div>
                     )}
 
                     <DialogFooter>
-                        <Button type="button" onClick={() => setViewDialogOpen(false)}>
+                        <Button type="button" variant="outline" onClick={() => setViewDialogOpen(false)}>
                             Close
                         </Button>
                     </DialogFooter>

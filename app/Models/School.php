@@ -89,8 +89,18 @@ class School extends Model
         return $this->hasManyThrough(LearningResourceInventory::class, LearningResource::class);
     }
 
-    public function equipment(): HasMany
+    public function ictEquipment(): HasMany
     {
-        return $this->hasMany(Equipment::class);
+        return $this->hasMany(IctEquipment::class);
+    }
+
+    public function otherEquipment(): HasMany
+    {
+        return $this->hasMany(OtherEquipment::class);
+    }
+
+    public function sme(): HasMany
+    {
+        return $this->hasMany(Sme::class);
     }
 }

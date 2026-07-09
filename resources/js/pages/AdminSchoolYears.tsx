@@ -1,7 +1,10 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { CheckCircle2, Pencil, Trash2 } from 'lucide-react';
+import { CalendarRange, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
+import { toast } from 'sonner';
+import { EmptyState } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,7 +45,10 @@ export default function AdminSchoolYears({ schoolYears }: Props) {
 
         post('/app/admin/school-years', {
             preserveScroll: true,
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                reset();
+                toast.success('School year added.');
+            },
         });
     };
 
@@ -62,16 +68,26 @@ export default function AdminSchoolYears({ schoolYears }: Props) {
 
         router.put(`/app/admin/school-years/${editing.id}`, editForm, {
             preserveScroll: true,
-            onSuccess: () => setEditing(null),
+            onSuccess: () => {
+                setEditing(null);
+                toast.success('School year updated.');
+            },
         });
     };
 
     const activate = (id: number) => {
-        router.post(`/app/admin/school-years/${id}/activate`, {}, { preserveScroll: true });
+        router.post(
+            `/app/admin/school-years/${id}/activate`,
+            {},
+            { preserveScroll: true, onSuccess: () => toast.success('Active school year updated.') },
+        );
     };
 
     const deleteSchoolYear = (id: number) => {
-        router.delete(`/app/admin/school-years/${id}`, { preserveScroll: true });
+        router.delete(`/app/admin/school-years/${id}`, {
+            preserveScroll: true,
+            onSuccess: () => toast.success('School year removed.'),
+        });
     };
 
     return (
@@ -80,12 +96,12 @@ export default function AdminSchoolYears({ schoolYears }: Props) {
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-5xl space-y-6">
-                    <header className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <h1 className="text-2xl font-bold text-foreground">School Years</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Manage school years and set the active school year used for enrollment and reports.
-                        </p>
-                    </header>
+                    <PageHeader
+                        icon={CalendarRange}
+                        iconClassName="bg-violet-950 text-violet-400 dark:bg-violet-900/60 dark:text-violet-300"
+                        title="School Years"
+                        description="Manage school years and set the active school year used for enrollment and reports."
+                    />
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
@@ -136,9 +152,7 @@ export default function AdminSchoolYears({ schoolYears }: Props) {
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         {schoolYears.length === 0 && (
-                            <p className="text-sm text-muted-foreground">
-                                No school years yet. Add the current school year to enable enrollment encoding.
-                            </p>
+                            <EmptyState message="No school years yet. Add the current school year to enable enrollment encoding." />
                         )}
 
                         <div className="grid gap-3 md:grid-cols-2">

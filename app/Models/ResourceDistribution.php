@@ -22,6 +22,7 @@ class ResourceDistribution extends Model
         'reference_code',
         'school_id',
         'learning_resource_type_id',
+        'resource_title_id',
         'title',
         'publisher',
         'quantity',
@@ -51,6 +52,11 @@ class ResourceDistribution extends Model
     public function learningResourceType(): BelongsTo
     {
         return $this->belongsTo(LearningResourceType::class);
+    }
+
+    public function resourceTitle(): BelongsTo
+    {
+        return $this->belongsTo(ResourceTitle::class);
     }
 
     public function learningResource(): BelongsTo

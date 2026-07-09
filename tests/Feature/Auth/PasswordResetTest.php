@@ -1,78 +1,105 @@
 <?php
 
+use App\Mail\PasswordResetOtpMail;
+use App\Models\AppSetting;
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
-use Illuminate\Support\Facades\Notification;
-use Laravel\Fortify\Features;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
-beforeEach(function () {
-    $this->skipUnlessFortifyHas(Features::resetPasswords());
-});
+function enableSmtpForPasswordReset(): void
+{
+    AppSetting::query()->updateOrCreate(['key' => 'smtp_enabled'], ['value' => '1']);
+    AppSetting::query()->updateOrCreate(['key' => 'smtp_host'], ['value' => 'smtp.example.test']);
+    AppSetting::query()->updateOrCreate(['key' => 'smtp_port'], ['value' => '587']);
+}
 
-test('reset password link screen can be rendered', function () {
+test('forgot password screen can be rendered', function () {
     $response = $this->get(route('password.request'));
 
     $response->assertOk();
 });
 
-test('reset password link can be requested', function () {
-    Notification::fake();
+test('password reset otp can be requested and used to set a new password', function () {
+    enableSmtpForPasswordReset();
+    Mail::fake();
 
     $user = User::factory()->create();
 
-    $this->post(route('password.email'), ['email' => $user->email]);
+    $this->post(route('password.otp.send'), ['email' => $user->email])
+        ->assertRedirect(route('password.otp.verify'))
+        ->assertSessionHas('otpEmail', $user->email);
 
-    Notification::assertSentTo($user, ResetPassword::class);
-});
-
-test('reset password screen can be rendered', function () {
-    Notification::fake();
-
-    $user = User::factory()->create();
-
-    $this->post(route('password.email'), ['email' => $user->email]);
-
-    Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
-        $response = $this->get(route('password.reset', $notification->token));
-
-        $response->assertOk();
+    $otp = null;
+    Mail::assertSent(PasswordResetOtpMail::class, function (PasswordResetOtpMail $mail) use (&$otp): bool {
+        $otp = $mail->otp;
 
         return true;
     });
-});
 
-test('password can be reset with valid token', function () {
-    Notification::fake();
+    expect($otp)->not->toBeNull();
 
-    $user = User::factory()->create();
+    $verifyPage = $this->get(route('password.otp.verify'));
+    $verifyPage->assertOk();
 
-    $this->post(route('password.email'), ['email' => $user->email]);
-
-    Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
-        $response = $this->post(route('password.update'), [
-            'token' => $notification->token,
-            'email' => $user->email,
-            'password' => 'password',
-            'password_confirmation' => 'password',
-        ]);
-
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect(route('login'));
-
-        return true;
-    });
-});
-
-test('password cannot be reset with invalid token', function () {
-    $user = User::factory()->create();
-
-    $response = $this->post(route('password.update'), [
-        'token' => 'invalid-token',
+    $response = $this->post(route('password.otp.update'), [
         'email' => $user->email,
-        'password' => 'newpassword123',
-        'password_confirmation' => 'newpassword123',
+        'otp' => $otp,
+        'password' => 'new-password-123',
+        'password_confirmation' => 'new-password-123',
     ]);
 
-    $response->assertSessionHasErrors('email');
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('login'));
+
+    expect(Hash::check('new-password-123', $user->fresh()->password))->toBeTrue();
+});
+
+test('password cannot be reset with an invalid otp', function () {
+    enableSmtpForPasswordReset();
+    Mail::fake();
+
+    $user = User::factory()->create();
+
+    $this->post(route('password.otp.send'), ['email' => $user->email]);
+
+    $response = $this->post(route('password.otp.update'), [
+        'email' => $user->email,
+        'otp' => '000000',
+        'password' => 'new-password-123',
+        'password_confirmation' => 'new-password-123',
+    ]);
+
+    $response->assertSessionHasErrors('otp');
+});
+
+test('password cannot be reset without first requesting an otp', function () {
+    $user = User::factory()->create();
+
+    $response = $this->post(route('password.otp.update'), [
+        'email' => $user->email,
+        'otp' => '123456',
+        'password' => 'new-password-123',
+        'password_confirmation' => 'new-password-123',
+    ]);
+
+    $response->assertSessionHasErrors('otp');
+});
+
+test('password reset otp request fails when smtp is not enabled', function () {
+    Mail::fake();
+
+    $user = User::factory()->create();
+
+    $this->post(route('password.otp.send'), ['email' => $user->email])
+        ->assertRedirect(route('password.request'))
+        ->assertSessionHas('status');
+
+    Mail::assertNothingSent();
+});
+
+test('verify otp page redirects back to request page without a pending otp', function () {
+    $response = $this->get(route('password.otp.verify'));
+
+    $response->assertRedirect(route('password.request'));
 });

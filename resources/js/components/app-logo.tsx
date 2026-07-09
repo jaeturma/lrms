@@ -14,7 +14,7 @@ export default function AppLogo() {
     const logoUrl = resolveBrandingImageUrl(branding?.app_logo_url);
 
     return (
-        <>
+        <div className="flex min-w-0 items-center gap-2">
             <div className="flex aspect-square size-8 items-center justify-center">
                 {logoUrl && !logoFailed ? (
                     <img
@@ -27,11 +27,11 @@ export default function AppLogo() {
                     <AppLogoIcon className="size-8 fill-current text-[var(--foreground)]" />
                 )}
             </div>
-            <div className="ml-1 grid flex-1 text-left text-sm">
+            <div className="ml-1 grid flex-1 min-w-0 text-left text-sm">
                 <span className="mb-0.5 truncate leading-tight font-semibold">
                     {branding?.app_title || 'LRMS'}
                 </span>
             </div>
-        </>
+        </div>
     );
 }

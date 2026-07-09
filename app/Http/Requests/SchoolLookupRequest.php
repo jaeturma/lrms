@@ -23,7 +23,7 @@ class SchoolLookupRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'school_id' => ['required', 'string', 'exists:schools,school_id'],
+            'school_id' => ['required', 'string', 'max:10', 'exists:schools,school_id'],
         ];
     }
 }

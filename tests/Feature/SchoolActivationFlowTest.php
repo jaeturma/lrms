@@ -1,5 +1,6 @@
 <?php
 
+use App\Mail\SchoolActivationCredentialsMail;
 use App\Mail\SchoolActivationOtpMail;
 use App\Models\AppSetting;
 use App\Models\Barangay;
@@ -24,6 +25,7 @@ test('school can activate account via otp and receive generated credentials once
 
     Mail::fake();
 
+    AppSetting::query()->updateOrCreate(['key' => 'smtp_enabled'], ['value' => '1']);
     AppSetting::query()->updateOrCreate(['key' => 'smtp_host'], ['value' => 'smtp.example.test']);
     AppSetting::query()->updateOrCreate(['key' => 'smtp_port'], ['value' => '587']);
 
@@ -63,6 +65,10 @@ test('school can activate account via otp and receive generated credentials once
     ]);
 
     $verifyResponse->assertRedirect(route('school.activate.credentials', $school));
+
+    Mail::assertSent(SchoolActivationCredentialsMail::class, function (SchoolActivationCredentialsMail $mail): bool {
+        return $mail->email === 'school@example.com';
+    });
 
     $school->refresh();
 
@@ -136,6 +142,45 @@ test('activated school id lookup redirects to update page and allows details upd
     expect($user->email)->toBe('updated-school@example.com');
 });
 
+test('school id lookup rejects values longer than ten characters', function () {
+    School::factory()->create([
+        'school_id' => 'SID-12345',
+    ]);
+
+    $response = $this->postJson(route('school.find'), [
+        'school_id' => 'SID-1234567',
+    ]);
+
+    $response
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('school_id');
+});
+
+test('school activation rejects entries beyond configured character limits', function () {
+    $school = School::factory()->create([
+        'school_id' => 'SID-45678',
+        'is_activated' => false,
+    ]);
+
+    $response = $this->post(route('school.activate.store', $school), [
+        'school_head' => str_repeat('A', 81),
+        'librarian' => str_repeat('B', 51),
+        'property_custodian' => str_repeat('C', 51),
+        'primary_mobile_no' => str_repeat('1', 16),
+        'secondary_mobile_no' => str_repeat('2', 16),
+        'email' => str_repeat('a', 43).'@example.com',
+    ]);
+
+    $response->assertSessionHasErrors([
+        'school_head',
+        'librarian',
+        'property_custodian',
+        'primary_mobile_no',
+        'secondary_mobile_no',
+        'email',
+    ]);
+});
+
 test('school activation request is persisted and admin can manually activate when smtp is unavailable', function () {
     $municipality = Municipality::factory()->create(['name' => 'Maco']);
     $district = District::factory()->create(['municipality_id' => $municipality->id, 'name' => 'District 1']);
@@ -202,4 +247,74 @@ test('school activation request is persisted and admin can manually activate whe
     expect($user)->not->toBeNull();
     expect($user->role)->toBe('school');
     expect($user->school_id)->toBe($school->id);
+});
+
+test('admin manual activation emails credentials when smtp is enabled', function () {
+    Mail::fake();
+
+    AppSetting::query()->updateOrCreate(['key' => 'smtp_enabled'], ['value' => '1']);
+    AppSetting::query()->updateOrCreate(['key' => 'smtp_host'], ['value' => 'smtp.example.test']);
+    AppSetting::query()->updateOrCreate(['key' => 'smtp_port'], ['value' => '587']);
+
+    $school = School::factory()->create([
+        'school_id' => 'SID-66666',
+        'is_activated' => false,
+        'school_head' => 'Manual Head',
+        'email' => 'manual-enabled@example.com',
+    ]);
+
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.schools.manual-activate', $school))
+        ->assertRedirect(route('admin.schools.show', $school));
+
+    Mail::assertSent(SchoolActivationCredentialsMail::class, function (SchoolActivationCredentialsMail $mail): bool {
+        return $mail->email === 'manual-enabled@example.com';
+    });
+});
+
+test('admin can resend generated credentials via the send credentials button', function () {
+    Mail::fake();
+
+    AppSetting::query()->updateOrCreate(['key' => 'smtp_enabled'], ['value' => '1']);
+    AppSetting::query()->updateOrCreate(['key' => 'smtp_host'], ['value' => 'smtp.example.test']);
+    AppSetting::query()->updateOrCreate(['key' => 'smtp_port'], ['value' => '587']);
+
+    $school = School::factory()->create([
+        'school_id' => 'SID-88888',
+        'is_activated' => false,
+        'school_head' => 'Resend Head',
+        'email' => 'resend@example.com',
+    ]);
+
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.schools.manual-activate', $school))
+        ->assertRedirect(route('admin.schools.show', $school));
+
+    Mail::assertSent(SchoolActivationCredentialsMail::class, 1);
+
+    $this->actingAs($admin)
+        ->post(route('admin.schools.send-credentials', $school))
+        ->assertRedirect(route('admin.schools.show', $school))
+        ->assertSessionHas('generatedEmail', 'resend@example.com')
+        ->assertSessionHas('status', 'Credentials have been emailed to the school.');
+
+    Mail::assertSent(SchoolActivationCredentialsMail::class, 2);
+});
+
+test('sending credentials fails gracefully when nothing has been generated yet', function () {
+    $school = School::factory()->create([
+        'school_id' => 'SID-99991',
+        'is_activated' => true,
+    ]);
+
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.schools.send-credentials', $school))
+        ->assertRedirect(route('admin.schools.show', $school))
+        ->assertSessionHas('status', 'No generated credentials available to email. Activate the school again to generate new credentials.');
 });

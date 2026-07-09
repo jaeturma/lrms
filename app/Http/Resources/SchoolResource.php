@@ -33,6 +33,7 @@ class SchoolResource extends JsonResource
             'secondary_mobile_no' => $this->when($canViewContactDetails, $this->secondary_mobile_no),
             'email' => $this->when($canViewContactDetails, $this->email),
             'is_activated' => $this->is_activated,
+            'is_profile_complete' => filled($this->school_head) && filled($this->email),
             'activation_requested_at' => $this->activation_requested_at?->toIso8601String(),
             'district' => $this->whenLoaded('district', fn () => $this->district?->name),
             'municipality' => $this->whenLoaded('municipality', fn () => $this->municipality?->name),

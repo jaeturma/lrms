@@ -12,4 +12,5 @@ export type NavItem = {
     icon?: LucideIcon | null;
     iconClassName?: string;
     isActive?: boolean;
+    children?: NavItem[];
 };

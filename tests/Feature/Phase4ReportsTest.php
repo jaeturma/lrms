@@ -2,8 +2,8 @@
 
 use App\Models\District;
 use App\Models\Enrollment;
-use App\Models\Equipment;
 use App\Models\GradeLevel;
+use App\Models\IctEquipment;
 use App\Models\LearningResource;
 use App\Models\Municipality;
 use App\Models\School;
@@ -102,26 +102,26 @@ test('resource adequacy uses the selected school year', function () {
         );
 });
 
-test('equipment summary groups counts by category and condition', function () {
+test('ict equipment summary groups counts by category and condition', function () {
     $admin = User::factory()->admin()->create();
 
     $school = createReportsSchool();
 
-    Equipment::factory()->count(2)->create([
+    IctEquipment::factory()->count(2)->create([
         'school_id' => $school->id,
-        'category' => 'ICT',
+        'category' => 'Laptop',
         'condition' => 'Good',
         'status' => 'Available',
     ]);
-    Equipment::factory()->create([
+    IctEquipment::factory()->create([
         'school_id' => $school->id,
-        'category' => 'ICT',
+        'category' => 'Laptop',
         'condition' => 'Needs Repair',
         'status' => 'In Use',
     ]);
-    Equipment::factory()->create([
+    IctEquipment::factory()->create([
         'school_id' => $school->id,
-        'category' => 'Science',
+        'category' => 'Tablet',
         'condition' => 'Good',
         'status' => 'Available',
     ]);
@@ -131,15 +131,15 @@ test('equipment summary groups counts by category and condition', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('AdminReports')
-            ->has('equipmentByCategory', 2)
-            ->where('equipmentByCategory.0.category', 'ICT')
-            ->where('equipmentByCategory.0.conditions.Good', 2)
-            ->where('equipmentByCategory.0.conditions.Needs Repair', 1)
-            ->where('equipmentByCategory.0.total', 3)
-            ->where('equipmentByCategory.1.category', 'Science')
-            ->where('equipmentByCategory.1.total', 1)
-            ->where('equipmentByStatus.Available', 3)
-            ->where('equipmentByStatus.In Use', 1)
+            ->has('ictEquipmentByCategory', 2)
+            ->where('ictEquipmentByCategory.0.category', 'Laptop')
+            ->where('ictEquipmentByCategory.0.conditions.Good', 2)
+            ->where('ictEquipmentByCategory.0.conditions.Needs Repair', 1)
+            ->where('ictEquipmentByCategory.0.total', 3)
+            ->where('ictEquipmentByCategory.1.category', 'Tablet')
+            ->where('ictEquipmentByCategory.1.total', 1)
+            ->where('ictEquipmentByStatus.Available', 3)
+            ->where('ictEquipmentByStatus.In Use', 1)
         );
 });
 
@@ -164,27 +164,27 @@ test('learning resource adequacy can be exported as csv', function () {
     expect($csv)->toContain('50,10,0.2,40');
 });
 
-test('equipment summary can be exported as csv', function () {
+test('ict equipment summary can be exported as csv', function () {
     $admin = User::factory()->admin()->create();
 
     $school = createReportsSchool(['school_name' => 'Equipment Export School']);
 
-    Equipment::factory()->count(2)->create([
+    IctEquipment::factory()->count(2)->create([
         'school_id' => $school->id,
-        'category' => 'ICT',
+        'category' => 'Laptop',
         'condition' => 'Good',
         'status' => 'Available',
     ]);
 
     $response = $this->actingAs($admin)
-        ->get(route('admin.reports.equipment.export'))
+        ->get(route('admin.reports.ict-equipment.export'))
         ->assertOk()
-        ->assertDownload('equipment-summary.csv');
+        ->assertDownload('ict-equipment-summary.csv');
 
     $csv = $response->streamedContent();
 
     expect($csv)->toContain('Equipment Export School');
-    expect($csv)->toContain('ICT,Good,Available,2');
+    expect($csv)->toContain('Laptop,Good,Available,2');
 });
 
 test('school users cannot access reports or exports', function () {
@@ -201,5 +201,6 @@ test('school users cannot access reports or exports', function () {
 
     $this->actingAs($user)->get(route('admin.reports.index'))->assertForbidden();
     $this->actingAs($user)->get(route('admin.reports.learning-resources.export'))->assertForbidden();
-    $this->actingAs($user)->get(route('admin.reports.equipment.export'))->assertForbidden();
+    $this->actingAs($user)->get(route('admin.reports.ict-equipment.export'))->assertForbidden();
+    $this->actingAs($user)->get(route('admin.reports.other-equipment.export'))->assertForbidden();
 });

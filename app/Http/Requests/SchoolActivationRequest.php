@@ -28,11 +28,11 @@ class SchoolActivationRequest extends FormRequest
         $school = $this->route('school');
 
         return [
-            'school_head' => ['required', 'string', 'max:50'],
+            'school_head' => ['required', 'string', 'max:80'],
             'librarian' => ['nullable', 'string', 'max:50'],
             'property_custodian' => ['nullable', 'string', 'max:50'],
-            'primary_mobile_no' => ['nullable', 'regex:/^09\d{9}$/', 'max:11'],
-            'secondary_mobile_no' => ['nullable', 'regex:/^09\d{9}$/', 'max:11'],
+            'primary_mobile_no' => ['nullable', 'string', 'max:15'],
+            'secondary_mobile_no' => ['nullable', 'string', 'max:15'],
             'email' => [
                 'required',
                 'email',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Resources\SchoolResource;
 use App\Services\AppSettingsService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -36,12 +37,14 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'branding' => app(AppSettingsService::class)->branding(),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
             ],
             'flash' => [
                 'status' => $request->session()->get('status'),
@@ -52,6 +55,9 @@ class HandleInertiaRequests extends Middleware
                 'importSummary' => $request->session()->get('importSummary'),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'school' => $user?->role === 'school' && $user->school
+                ? SchoolResource::make($user->school)->resolve($request)
+                : null,
         ];
     }
 }

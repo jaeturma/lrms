@@ -12,7 +12,7 @@ class ImportSchoolsRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->role === 'admin';
+        return in_array($this->user()?->role, ['admin', 'superadmin', 'sysadmin', 'ito'], true);
     }
 
     /**

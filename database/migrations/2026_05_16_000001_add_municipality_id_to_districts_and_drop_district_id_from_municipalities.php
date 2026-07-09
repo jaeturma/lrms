@@ -49,31 +49,31 @@ return new class extends Migration
         });
 
         if (DB::getDriverName() === 'mysql' && Schema::hasColumn('municipalities', 'district_id')) {
+            // Drop FK regardless of generated constraint name. This must happen
+            // before dropping any unique index on district_id, since MySQL
+            // refuses to drop an index that a foreign key still relies on.
+            $foreignKeys = DB::select(
+                'SELECT CONSTRAINT_NAME
+                 FROM information_schema.KEY_COLUMN_USAGE
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = ?
+                   AND COLUMN_NAME = ?
+                   AND REFERENCED_TABLE_NAME IS NOT NULL',
+                ['municipalities', 'district_id']
+            );
+
+            foreach ($foreignKeys as $foreignKey) {
+                DB::statement(sprintf(
+                    'ALTER TABLE `municipalities` DROP FOREIGN KEY `%s`',
+                    $foreignKey->CONSTRAINT_NAME,
+                ));
+            }
+
             Schema::table('municipalities', function (Blueprint $table): void {
                 foreach ($this->uniqueIndexesForColumns('municipalities', ['district_id', 'name']) as $indexName) {
                     $table->dropUnique($indexName);
                 }
             });
-
-            // Drop FK regardless of generated constraint name.
-            if (DB::getDriverName() === 'mysql') {
-                $foreignKeys = DB::select(
-                    'SELECT CONSTRAINT_NAME
-                     FROM information_schema.KEY_COLUMN_USAGE
-                     WHERE TABLE_SCHEMA = DATABASE()
-                       AND TABLE_NAME = ?
-                       AND COLUMN_NAME = ?
-                       AND REFERENCED_TABLE_NAME IS NOT NULL',
-                    ['municipalities', 'district_id']
-                );
-
-                foreach ($foreignKeys as $foreignKey) {
-                    DB::statement(sprintf(
-                        'ALTER TABLE `municipalities` DROP FOREIGN KEY `%s`',
-                        $foreignKey->CONSTRAINT_NAME,
-                    ));
-                }
-            }
 
             Schema::table('municipalities', function (Blueprint $table): void {
                 $table->dropColumn('district_id');

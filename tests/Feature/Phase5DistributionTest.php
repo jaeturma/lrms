@@ -5,6 +5,7 @@ use App\Models\LearningResource;
 use App\Models\LearningResourceType;
 use App\Models\Municipality;
 use App\Models\ResourceDistribution;
+use App\Models\ResourceTitle;
 use App\Models\School;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -30,13 +31,17 @@ test('admin can record a delivery with a generated reference code', function () 
     $admin = User::factory()->admin()->create();
     [$school] = createDistributionSchoolUser();
     $type = LearningResourceType::factory()->create(['is_active' => true]);
+    $title = ResourceTitle::factory()->create([
+        'learning_resource_type_id' => $type->id,
+        'title' => 'Grade 3 Mathematics Textbook',
+        'author' => 'DepEd',
+        'publisher' => 'DepEd Central Office',
+    ]);
 
     $this->actingAs($admin)
         ->post(route('admin.distributions.store'), [
             'school_id' => $school->id,
-            'learning_resource_type_id' => $type->id,
-            'title' => 'Grade 3 Mathematics Textbook',
-            'publisher' => 'DepEd Central Office',
+            'resource_title_id' => $title->id,
             'quantity' => 120,
             'notes' => 'First tranche',
         ])
@@ -48,7 +53,26 @@ test('admin can record a delivery with a generated reference code', function () 
     expect($distribution->status)->toBe('pending');
     expect($distribution->reference_code)->toStartWith('DST-');
     expect($distribution->created_by)->toBe($admin->id);
+    expect($distribution->resource_title_id)->toBe($title->id);
+    expect($distribution->learning_resource_type_id)->toBe($type->id);
+    expect($distribution->title)->toBe('Grade 3 Mathematics Textbook');
     expect($distribution->quantity)->toBe(120);
+});
+
+test('admin cannot record a delivery from an inactive catalog title', function () {
+    $admin = User::factory()->admin()->create();
+    [$school] = createDistributionSchoolUser();
+    $title = ResourceTitle::factory()->create(['is_active' => false]);
+
+    $this->actingAs($admin)
+        ->post(route('admin.distributions.store'), [
+            'school_id' => $school->id,
+            'resource_title_id' => $title->id,
+            'quantity' => 20,
+        ])
+        ->assertSessionHasErrors('resource_title_id');
+
+    expect(ResourceDistribution::count())->toBe(0);
 });
 
 test('admin can cancel a pending delivery but not a received one', function () {
@@ -88,10 +112,18 @@ test('school user sees only their own deliveries', function () {
 
 test('confirming receipt creates the learning resource and inventory', function () {
     [$school, $user] = createDistributionSchoolUser();
+    $title = ResourceTitle::factory()->create([
+        'title' => 'Science Activity Workbook',
+        'author' => 'Maria Santos',
+        'publisher' => 'DepEd Central',
+    ]);
 
     $distribution = ResourceDistribution::factory()->create([
         'school_id' => $school->id,
-        'title' => 'Science Activity Workbook',
+        'learning_resource_type_id' => $title->learning_resource_type_id,
+        'resource_title_id' => $title->id,
+        'title' => $title->title,
+        'publisher' => $title->publisher,
         'quantity' => 50,
     ]);
 
@@ -112,7 +144,9 @@ test('confirming receipt creates the learning resource and inventory', function 
     $resource = LearningResource::where('school_id', $school->id)->sole();
 
     expect($distribution->learning_resource_id)->toBe($resource->id);
+    expect($resource->resource_title_id)->toBe($title->id);
     expect($resource->title)->toBe('Science Activity Workbook');
+    expect($resource->author)->toBe('Maria Santos');
     expect($resource->quantity_delivered)->toBe(50);
 
     $inventory = $resource->inventory;
@@ -189,6 +223,7 @@ test('admin distributions page renders with filters and summary', function () {
 
     ResourceDistribution::factory()->count(2)->create(['status' => 'pending']);
     ResourceDistribution::factory()->create(['status' => 'received']);
+    ResourceTitle::factory()->count(2)->create(['is_active' => true]);
 
     $this->actingAs($admin)
         ->get(route('admin.distributions.index', ['status' => 'pending']))
@@ -199,6 +234,6 @@ test('admin distributions page renders with filters and summary', function () {
             ->where('summary.pending', 2)
             ->where('summary.received', 1)
             ->has('schools')
-            ->has('resourceTypes')
+            ->has('resourceTitles', 2)
         );
 });

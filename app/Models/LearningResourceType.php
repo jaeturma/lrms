@@ -13,7 +13,6 @@ class LearningResourceType extends Model
     public const CATEGORIES = [
         'Print',
         'Non-Print',
-        'Digital',
         'Equipment',
     ];
 

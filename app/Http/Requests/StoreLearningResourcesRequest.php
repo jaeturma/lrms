@@ -42,6 +42,10 @@ class StoreLearningResourcesRequest extends FormRequest
             'resources.*.quantity_delivered' => ['required', 'integer', 'min:1'],
             'resources.*.quantity_with_issue_defect' => ['required', 'integer', 'min:0'],
             'resources.*.remarks' => ['nullable', 'string', 'max:255'],
+            'resources.*.source' => ['nullable', 'string', 'max:255'],
+            'resources.*.supplier' => ['nullable', 'string', 'max:255'],
+            'resources.*.date_delivered' => ['nullable', 'date'],
+            'resources.*.ier_no' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

@@ -29,6 +29,7 @@ class UpdateAppSettingsRequest extends FormRequest
             'app_title' => ['required', 'string', 'max:255'],
             'app_logo_url' => ['nullable', 'url', 'max:2048'],
             'app_logo_file' => ['nullable', 'image', 'max:2048'],
+            'smtp_enabled' => ['nullable', 'boolean'],
             'smtp_host' => ['nullable', 'string', 'max:255'],
             'smtp_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'smtp_username' => ['nullable', 'string', 'max:255'],

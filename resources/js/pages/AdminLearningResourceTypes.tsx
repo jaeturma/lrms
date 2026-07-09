@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Layers3, Pencil, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
+import { PageHeaderIcon } from '@/components/page-header-icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -55,9 +56,15 @@ export default function AdminLearningResourceTypes({ learningResourceTypes, cate
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-5xl space-y-6">
-                    <header className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <h1 className="text-2xl font-bold text-foreground">Learning Material Types</h1>
-                        <p className="text-sm text-muted-foreground">Create, activate/deactivate, and remove material types used in school encoding.</p>
+                    <header className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+                        <PageHeaderIcon
+                            icon={Layers3}
+                            className="bg-violet-950 text-violet-400 dark:bg-violet-900/60 dark:text-violet-300"
+                        />
+                        <div>
+                            <h1 className="text-2xl font-bold text-foreground">Learning Material Types</h1>
+                            <p className="text-sm text-muted-foreground">Create, activate/deactivate, and remove material types used in school encoding.</p>
+                        </div>
                     </header>
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">

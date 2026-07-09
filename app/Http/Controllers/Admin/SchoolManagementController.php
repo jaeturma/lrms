@@ -7,6 +7,7 @@ use App\Http\Requests\AdminStoreSchoolRequest;
 use App\Http\Requests\AdminUpdateSchoolRequest;
 use App\Http\Resources\LearningResourceResource;
 use App\Http\Resources\SchoolResource;
+use App\Mail\SchoolActivationCredentialsMail;
 use App\Models\Barangay;
 use App\Models\District;
 use App\Models\Enrollment;
@@ -14,13 +15,16 @@ use App\Models\InventoryMovement;
 use App\Models\Municipality;
 use App\Models\School;
 use App\Models\SchoolYear;
+use App\Services\AppSettingsService;
 use App\Services\SchoolActivationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class SchoolManagementController extends Controller
 {
@@ -158,6 +162,7 @@ class SchoolManagementController extends Controller
     public function manuallyActivate(
         School $school,
         SchoolActivationService $activationService,
+        AppSettingsService $settingsService,
     ): RedirectResponse {
         if ($school->is_activated) {
             return redirect()
@@ -189,11 +194,70 @@ class SchoolManagementController extends Controller
                 ->withErrors($exception->errors());
         }
 
+        $emailed = false;
+
+        if ($settingsService->applyToMailer()) {
+            try {
+                Mail::to($result['user']->email)->send(new SchoolActivationCredentialsMail(
+                    schoolName: $school->school_name,
+                    email: $result['user']->email,
+                    password: $result['password'],
+                ));
+                $emailed = true;
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        }
+
         return redirect()
             ->route('admin.schools.show', $school)
-            ->with('status', 'School manually activated. Share the generated credentials with the school user.')
+            ->with('status', $emailed
+                ? 'School manually activated. Credentials have been emailed to the school.'
+                : 'School manually activated. Share the generated credentials with the school user.')
             ->with('generatedEmail', $result['user']->email)
             ->with('generatedPassword', $result['password']);
+    }
+
+    public function sendCredentials(School $school, AppSettingsService $settingsService): RedirectResponse
+    {
+        $email = session('generatedEmail');
+        $password = session('generatedPassword');
+
+        if (! $email || ! $password) {
+            return redirect()
+                ->route('admin.schools.show', $school)
+                ->with('status', 'No generated credentials available to email. Activate the school again to generate new credentials.');
+        }
+
+        if (! $settingsService->applyToMailer()) {
+            return redirect()
+                ->route('admin.schools.show', $school)
+                ->with('status', 'Could not send email: SMTP is not configured in App Settings.')
+                ->with('generatedEmail', $email)
+                ->with('generatedPassword', $password);
+        }
+
+        try {
+            Mail::to($email)->send(new SchoolActivationCredentialsMail(
+                schoolName: $school->school_name,
+                email: $email,
+                password: $password,
+            ));
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return redirect()
+                ->route('admin.schools.show', $school)
+                ->with('status', 'Failed to send the credentials email. Please try again.')
+                ->with('generatedEmail', $email)
+                ->with('generatedPassword', $password);
+        }
+
+        return redirect()
+            ->route('admin.schools.show', $school)
+            ->with('status', 'Credentials have been emailed to the school.')
+            ->with('generatedEmail', $email)
+            ->with('generatedPassword', $password);
     }
 
     public function update(AdminUpdateSchoolRequest $request, School $school): RedirectResponse

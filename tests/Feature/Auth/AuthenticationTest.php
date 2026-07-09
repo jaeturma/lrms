@@ -53,6 +53,17 @@ test('users can not authenticate with invalid password', function () {
     $this->assertGuest();
 });
 
+test('school login rejects oversized credentials', function () {
+    $response = $this->post(route('login.store'), [
+        'email' => str_repeat('a', 43).'@example.com',
+        'password' => str_repeat('p', 31),
+    ]);
+
+    $response->assertSessionHasErrors(['email', 'password']);
+
+    $this->assertGuest();
+});
+
 test('users can logout', function () {
     $user = User::factory()->create();
 

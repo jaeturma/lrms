@@ -16,6 +16,7 @@ test('admin can update branding and smtp settings', function () {
             'login_logo_file' => UploadedFile::fake()->image('login-logo.png'),
             'app_title' => 'LRMS App',
             'app_logo_file' => UploadedFile::fake()->image('app-logo.png'),
+            'smtp_enabled' => true,
             'smtp_host' => 'smtp.gmail.com',
             'smtp_port' => 587,
             'smtp_username' => 'otp@example.com',
@@ -32,6 +33,7 @@ test('admin can update branding and smtp settings', function () {
 
     expect(AppSetting::query()->where('key', 'login_title')->value('value'))->toBe('LRMS Login');
     expect(AppSetting::query()->where('key', 'app_title')->value('value'))->toBe('LRMS App');
+    expect(AppSetting::query()->where('key', 'smtp_enabled')->value('value'))->toBe('1');
     expect(AppSetting::query()->where('key', 'smtp_host')->value('value'))->toBe('smtp.gmail.com');
     expect(AppSetting::query()->where('key', 'smtp_password_encrypted')->value('value'))->not->toBeNull();
     expect($loginLogoUrl)->toStartWith('/storage/branding/');
@@ -59,4 +61,5 @@ test('admin settings accepts multipart method spoof update with required titles'
 
     expect(AppSetting::query()->where('key', 'login_title')->value('value'))->toBe('Updated Login Title');
     expect(AppSetting::query()->where('key', 'app_title')->value('value'))->toBe('Updated App Title');
+    expect(AppSetting::query()->where('key', 'smtp_enabled')->value('value'))->toBe('0');
 });

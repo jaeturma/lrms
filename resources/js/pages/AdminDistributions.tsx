@@ -1,5 +1,13 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
+import { Truck } from 'lucide-react';
 import { FormEvent } from 'react';
+import { toast } from 'sonner';
+import { EmptyTableRow } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
+import { Pagination } from '@/components/pagination';
+import { SearchInput } from '@/components/search-input';
+import { StatusBadge } from '@/components/status-badge';
+import type { StatusTone } from '@/components/status-badge';
 
 type Option = {
     id: number;
@@ -7,13 +15,24 @@ type Option = {
     school_name?: string;
 };
 
+type ResourceTitleOption = {
+    id: number;
+    title: string;
+    author: string | null;
+    publisher: string | null;
+    resource_type: string | null;
+    grade_level: string | null;
+};
+
 type DistributionRow = {
     id: number;
     reference_code: string | null;
     school_name: string | null;
     school_code: string | null;
+    resource_title_id: number | null;
     resource_type: string | null;
     title: string;
+    author: string | null;
     publisher: string | null;
     quantity: number;
     quantity_damaged: number | null;
@@ -39,25 +58,24 @@ type Props = {
     statuses: string[];
     distributions: Paginator<DistributionRow>;
     schools: Option[];
-    resourceTypes: Option[];
+    resourceTitles: ResourceTitleOption[];
     summary: Record<string, number>;
 };
 
-const statusClasses: Record<string, string> = {
-    pending: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-    received: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-    cancelled: 'bg-muted text-muted-foreground',
+const statusTones: Record<string, StatusTone> = {
+    pending: 'warning',
+    received: 'success',
+    cancelled: 'neutral',
 };
 
-export default function AdminDistributions({ filters, statuses, distributions, schools, resourceTypes, summary }: Props) {
+export default function AdminDistributions({ filters, statuses, distributions, schools, resourceTitles, summary }: Props) {
     const form = useForm({
         school_id: '',
-        learning_resource_type_id: '',
-        title: '',
-        publisher: '',
+        resource_title_id: '',
         quantity: '',
         notes: '',
     });
+    const selectedTitle = resourceTitles.find((title) => String(title.id) === form.data.resource_title_id);
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -69,7 +87,14 @@ export default function AdminDistributions({ filters, statuses, distributions, s
 
     const cancelDistribution = (distribution: DistributionRow) => {
         if (confirm(`Cancel delivery ${distribution.reference_code}?`)) {
-            router.post(`/app/admin/distributions/${distribution.id}/cancel`, {}, { preserveScroll: true });
+            router.post(
+                `/app/admin/distributions/${distribution.id}/cancel`,
+                {},
+                {
+                    preserveScroll: true,
+                    onSuccess: () => toast.success(`Delivery ${distribution.reference_code} cancelled.`),
+                },
+            );
         }
     };
 
@@ -79,12 +104,13 @@ export default function AdminDistributions({ filters, statuses, distributions, s
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-7xl space-y-6">
-                    <header className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <h1 className="text-2xl font-bold text-foreground">Resource Distributions</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Deliveries of learning resources from the division to schools. Schools confirm receipt to add
-                            copies into their inventories.
-                        </p>
+                    <PageHeader
+                        icon={Truck}
+                        iconClassName="bg-lime-950 text-lime-400 dark:bg-lime-900/60 dark:text-lime-300"
+                        title="Resource Distributions"
+                        description="Deliveries of learning resources from the division to schools. Schools confirm receipt to add copies into their inventories."
+                        align="start"
+                    >
                         {Object.keys(summary).length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-2 text-xs">
                                 {Object.entries(summary).map(([status, total]) => (
@@ -98,7 +124,7 @@ export default function AdminDistributions({ filters, statuses, distributions, s
                                 ))}
                             </div>
                         )}
-                    </header>
+                    </PageHeader>
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <h2 className="mb-4 text-lg font-semibold text-foreground">Record a Delivery</h2>
@@ -120,39 +146,32 @@ export default function AdminDistributions({ filters, statuses, distributions, s
                             </div>
                             <div>
                                 <select
-                                    value={form.data.learning_resource_type_id}
-                                    onChange={(event) => form.setData('learning_resource_type_id', event.target.value)}
+                                    value={form.data.resource_title_id}
+                                    onChange={(event) => form.setData('resource_title_id', event.target.value)}
                                     className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
                                 >
-                                    <option value="">Select resource type…</option>
-                                    {resourceTypes.map((type) => (
-                                        <option key={type.id} value={type.id}>
-                                            {type.name}
+                                    <option value="">Select catalog title...</option>
+                                    {resourceTitles.map((title) => (
+                                        <option key={title.id} value={title.id}>
+                                            {[title.title, title.author].filter(Boolean).join(' - ')}
                                         </option>
                                     ))}
                                 </select>
-                                {form.errors.learning_resource_type_id && (
-                                    <p className="mt-1 text-xs text-destructive">{form.errors.learning_resource_type_id}</p>
+                                {form.errors.resource_title_id && (
+                                    <p className="mt-1 text-xs text-destructive">{form.errors.resource_title_id}</p>
                                 )}
                             </div>
-                            <div>
-                                <input
-                                    value={form.data.title}
-                                    onChange={(event) => form.setData('title', event.target.value)}
-                                    placeholder="Title"
-                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
-                                />
-                                {form.errors.title && <p className="mt-1 text-xs text-destructive">{form.errors.title}</p>}
-                            </div>
-                            <div>
-                                <input
-                                    value={form.data.publisher}
-                                    onChange={(event) => form.setData('publisher', event.target.value)}
-                                    placeholder="Publisher (optional)"
-                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
-                                />
-                                {form.errors.publisher && <p className="mt-1 text-xs text-destructive">{form.errors.publisher}</p>}
-                            </div>
+                            {selectedTitle && (
+                                <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-sm md:col-span-2 lg:col-span-1">
+                                    <p className="font-medium text-foreground">{selectedTitle.title}</p>
+                                    <p className="text-muted-foreground">
+                                        {[selectedTitle.author, selectedTitle.publisher].filter(Boolean).join(' / ') || '-'}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {[selectedTitle.resource_type, selectedTitle.grade_level].filter(Boolean).join(' - ') || '-'}
+                                    </p>
+                                </div>
+                            )}
                             <div>
                                 <input
                                     type="number"
@@ -187,11 +206,11 @@ export default function AdminDistributions({ filters, statuses, distributions, s
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <form method="get" action="/app/admin/distributions" className="mb-4 flex flex-wrap gap-2">
-                            <input
+                            <SearchInput
                                 name="search"
                                 defaultValue={filters.search ?? ''}
                                 placeholder="Search reference, title, or school"
-                                className="h-9 w-72 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                                containerClassName="w-72"
                             />
                             <select
                                 name="status"
@@ -218,6 +237,7 @@ export default function AdminDistributions({ filters, statuses, distributions, s
                                         <th className="px-3 py-2">School</th>
                                         <th className="px-3 py-2">Type</th>
                                         <th className="px-3 py-2">Title</th>
+                                        <th className="px-3 py-2">Author</th>
                                         <th className="px-3 py-2 text-right">Qty</th>
                                         <th className="px-3 py-2">Status</th>
                                         <th className="px-3 py-2">Received</th>
@@ -226,11 +246,7 @@ export default function AdminDistributions({ filters, statuses, distributions, s
                                 </thead>
                                 <tbody>
                                     {distributions.data.length === 0 && (
-                                        <tr>
-                                            <td className="px-3 py-6 text-center text-muted-foreground" colSpan={8}>
-                                                No deliveries recorded.
-                                            </td>
-                                        </tr>
+                                        <EmptyTableRow colSpan={9} message="No deliveries recorded." />
                                     )}
                                     {distributions.data.map((distribution) => (
                                         <tr key={distribution.id} className="border-t border-border">
@@ -240,15 +256,14 @@ export default function AdminDistributions({ filters, statuses, distributions, s
                                             <td className="px-3 py-2 text-foreground">{distribution.school_name ?? '-'}</td>
                                             <td className="px-3 py-2 text-muted-foreground">{distribution.resource_type ?? '-'}</td>
                                             <td className="px-3 py-2 font-medium text-foreground">{distribution.title}</td>
+                                            <td className="px-3 py-2 text-muted-foreground">{distribution.author ?? '-'}</td>
                                             <td className="px-3 py-2 text-right text-muted-foreground">
                                                 {distribution.quantity.toLocaleString()}
                                             </td>
                                             <td className="px-3 py-2">
-                                                <span
-                                                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusClasses[distribution.status] ?? 'bg-muted text-muted-foreground'}`}
-                                                >
+                                                <StatusBadge tone={statusTones[distribution.status] ?? 'neutral'}>
                                                     {distribution.status}
-                                                </span>
+                                                </StatusBadge>
                                             </td>
                                             <td className="px-3 py-2 text-muted-foreground">
                                                 {distribution.received_at
@@ -272,26 +287,7 @@ export default function AdminDistributions({ filters, statuses, distributions, s
                             </table>
                         </div>
 
-                        {distributions.links.length > 3 && (
-                            <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                                {distributions.links.map((link, index) => (
-                                    <span key={index}>
-                                        {link.url ? (
-                                            <Link
-                                                href={link.url}
-                                                className={`rounded border px-3 py-1 ${link.active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground'}`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        ) : (
-                                            <span
-                                                className="rounded border border-border bg-card px-3 py-1 text-muted-foreground"
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        )}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                        <Pagination links={distributions.links} className="mt-4" />
                     </section>
                 </div>
             </main>

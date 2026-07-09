@@ -15,7 +15,14 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             RoleUserSeeder::class,
             LearningResourceTypeSeeder::class,
+            DigitalLearningMaterialSeeder::class,
+            IctEquipmentCatalogSeeder::class,
+            OtherEquipmentCatalogSeeder::class,
+            SmeCatalogSeeder::class,
             GradeLevelSeeder::class,
+            SchoolYearSeeder::class,
+            LocationSeeder::class,
+            SchoolSeeder::class,
         ]);
     }
 }

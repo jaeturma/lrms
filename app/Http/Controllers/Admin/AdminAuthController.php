@@ -20,16 +20,33 @@ class AdminAuthController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
+            'email' => ['required', 'email', 'max:50'],
+            'password' => ['required', 'string', 'max:30'],
             'remember' => ['nullable', 'boolean'],
         ]);
 
         $attempted = Auth::attempt([
             'email' => $credentials['email'],
             'password' => $credentials['password'],
-            'role' => 'admin',
         ], (bool) ($credentials['remember'] ?? false));
+
+        $allowedRoles = [
+            'admin',
+            'superadmin',
+            'sysadmin',
+            'ito',
+            'manager',
+            'librarian',
+            'supply',
+            'cidchief',
+            'asds',
+            'sds',
+        ];
+
+        if ($attempted && ! in_array($request->user()?->role, $allowedRoles, true)) {
+            Auth::logout();
+            $attempted = false;
+        }
 
         if (! $attempted) {
             throw ValidationException::withMessages([

@@ -1,6 +1,9 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Trash2 } from 'lucide-react';
+import { GraduationCap, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
+import { toast } from 'sonner';
+import { EmptyState } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -27,7 +30,10 @@ export default function AdminGradeLevels({ gradeLevels }: Props) {
 
         post('/app/admin/grade-levels', {
             preserveScroll: true,
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                reset();
+                toast.success('Grade level added.');
+            },
         });
     };
 
@@ -39,12 +45,19 @@ export default function AdminGradeLevels({ gradeLevels }: Props) {
                 sort_order: gradeLevel.sort_order,
                 is_active: !gradeLevel.is_active,
             },
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: () =>
+                    toast.success(gradeLevel.is_active ? 'Grade level deactivated.' : 'Grade level activated.'),
+            },
         );
     };
 
     const deleteGradeLevel = (id: number) => {
-        router.delete(`/app/admin/grade-levels/${id}`, { preserveScroll: true });
+        router.delete(`/app/admin/grade-levels/${id}`, {
+            preserveScroll: true,
+            onSuccess: () => toast.success('Grade level removed.'),
+        });
     };
 
     return (
@@ -53,12 +66,12 @@ export default function AdminGradeLevels({ gradeLevels }: Props) {
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-5xl space-y-6">
-                    <header className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <h1 className="text-2xl font-bold text-foreground">Grade Levels</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Manage the grade levels available for school enrollment encoding.
-                        </p>
-                    </header>
+                    <PageHeader
+                        icon={GraduationCap}
+                        iconClassName="bg-violet-950 text-violet-400 dark:bg-violet-900/60 dark:text-violet-300"
+                        title="Grade Levels"
+                        description="Manage the grade levels available for school enrollment encoding."
+                    />
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
@@ -96,6 +109,10 @@ export default function AdminGradeLevels({ gradeLevels }: Props) {
                     </section>
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                        {gradeLevels.length === 0 && (
+                            <EmptyState message="No grade levels yet. Add one above to enable enrollment encoding." />
+                        )}
+
                         <div className="grid gap-3 md:grid-cols-2">
                             {gradeLevels.map((gradeLevel) => (
                                 <div

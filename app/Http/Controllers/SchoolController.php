@@ -8,6 +8,7 @@ use App\Http\Requests\StoreLearningResourcesRequest;
 use App\Http\Requests\VerifySchoolActivationOtpRequest;
 use App\Http\Resources\LearningResourceResource;
 use App\Http\Resources\SchoolResource;
+use App\Mail\SchoolActivationCredentialsMail;
 use App\Mail\SchoolActivationOtpMail;
 use App\Models\Barangay;
 use App\Models\District;
@@ -21,7 +22,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -58,7 +58,7 @@ class SchoolController extends Controller
     {
         $school->load(['district', 'municipality', 'barangay']);
         $smtp = $settingsService->smtp();
-        $otpEnabled = (bool) ($smtp['smtp_host'] && $smtp['smtp_port']);
+        $otpEnabled = (bool) ($smtp['smtp_enabled'] && $smtp['smtp_host'] && $smtp['smtp_port']);
 
         return Inertia::render('SchoolActivationPage', [
             'school' => SchoolResource::make($school),
@@ -156,9 +156,7 @@ class SchoolController extends Controller
             $expiresAt,
         );
 
-        $smtp = $settingsService->smtp();
-
-        if (! $smtp['smtp_host'] || ! $smtp['smtp_port']) {
+        if (! $settingsService->applyToMailer()) {
             Cache::forget($this->otpCacheKey($school));
 
             return redirect()
@@ -167,8 +165,6 @@ class SchoolController extends Controller
         }
 
         try {
-            $this->applySmtpSettings($smtp);
-
             Mail::to($validated['email'])->send(new SchoolActivationOtpMail(
                 schoolName: $school->school_name,
                 otp: $otpCode,
@@ -194,6 +190,7 @@ class SchoolController extends Controller
         VerifySchoolActivationOtpRequest $request,
         School $school,
         SchoolActivationService $activationService,
+        AppSettingsService $settingsService,
     ): RedirectResponse {
         if ($school->is_activated) {
             return redirect()->route('login');
@@ -230,6 +227,18 @@ class SchoolController extends Controller
 
         Cache::forget($this->otpCacheKey($school));
 
+        if ($settingsService->applyToMailer()) {
+            try {
+                Mail::to($result['user']->email)->send(new SchoolActivationCredentialsMail(
+                    schoolName: $school->school_name,
+                    email: $result['user']->email,
+                    password: $result['password'],
+                ));
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        }
+
         return redirect()
             ->route('school.activate.credentials', $school)
             ->with('generatedEmail', $result['user']->email)
@@ -239,25 +248,6 @@ class SchoolController extends Controller
     private function otpCacheKey(School $school): string
     {
         return 'school_activation_otp:'.$school->id;
-    }
-
-    /**
-     * @param  array<string, string|null>  $smtp
-     */
-    private function applySmtpSettings(array $smtp): void
-    {
-        if (! $smtp['smtp_host'] || ! $smtp['smtp_port']) {
-            return;
-        }
-
-        Config::set('mail.default', 'smtp');
-        Config::set('mail.mailers.smtp.host', $smtp['smtp_host']);
-        Config::set('mail.mailers.smtp.port', (int) $smtp['smtp_port']);
-        Config::set('mail.mailers.smtp.username', $smtp['smtp_username']);
-        Config::set('mail.mailers.smtp.password', $smtp['smtp_password']);
-        Config::set('mail.mailers.smtp.encryption', $smtp['smtp_encryption'] ?: null);
-        Config::set('mail.from.address', $smtp['smtp_from_address'] ?: config('mail.from.address'));
-        Config::set('mail.from.name', $smtp['smtp_from_name'] ?: config('mail.from.name'));
     }
 
     public function storeLearningResources(
@@ -311,6 +301,10 @@ class SchoolController extends Controller
                         'quantity_delivered' => $payload['quantity_delivered'],
                         'quantity_with_issue_defect' => $payload['quantity_with_issue_defect'],
                         'remarks' => $payload['remarks'] ?? null,
+                        'source' => $payload['source'] ?? null,
+                        'supplier' => $payload['supplier'] ?? null,
+                        'date_delivered' => $payload['date_delivered'] ?? null,
+                        'ier_no' => $payload['ier_no'] ?? null,
                     ]
                     : [
                         'resource_title_id' => null,
@@ -320,6 +314,10 @@ class SchoolController extends Controller
                         'quantity_delivered' => $payload['quantity_delivered'],
                         'quantity_with_issue_defect' => $payload['quantity_with_issue_defect'],
                         'remarks' => $payload['remarks'] ?? null,
+                        'source' => $payload['source'] ?? null,
+                        'supplier' => $payload['supplier'] ?? null,
+                        'date_delivered' => $payload['date_delivered'] ?? null,
+                        'ier_no' => $payload['ier_no'] ?? null,
                     ];
 
                 if (! empty($payload['id'])) {
@@ -342,7 +340,7 @@ class SchoolController extends Controller
             return response()->json([
                 'message' => 'Learning resources saved successfully.',
                 'resources' => LearningResourceResource::collection(
-                    $school->learningResources()->with(['learningResourceType', 'inventory'])->latest()->get(),
+                    $school->learningResources()->with(['learningResourceType', 'inventory', 'resourceTitle'])->latest()->get(),
                 ),
             ]);
         }

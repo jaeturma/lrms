@@ -1,4 +1,10 @@
 import { Head } from '@inertiajs/react';
+import { BookOpen, Boxes, CalendarRange, GraduationCap, Percent, Truck } from 'lucide-react';
+import { ChartCard } from '@/components/charts/chart-card';
+import { DivergingStackedBar } from '@/components/charts/diverging-stacked-bar';
+import { EmptyChart } from '@/components/charts/empty-chart';
+import { GroupedColumnChart } from '@/components/charts/grouped-column-chart';
+import { StatTile } from '@/components/stat-tile';
 
 type School = {
     id?: number;
@@ -17,16 +23,25 @@ type School = {
 
 type Props = {
     school: School | { data: School };
-    resourceSummary: {
+    activeSchoolYear: { id: number; name: string } | null;
+    stats: {
+        total_learners: number;
+        male_learners: number;
+        female_learners: number;
         total_resources: number;
-        total_delivered: number;
-        total_with_issue: number;
-        issue_rate: number;
-        learning_types_count: number;
+        copies_delivered: number;
+        copies_with_defects: number;
+        defect_rate: number;
+        total_equipment: number;
+        equipment_needing_repair: number;
+        pending_distributions: number;
+        total_distributions: number;
     };
+    enrollmentByGrade: Array<{ grade: string; male: number; female: number }>;
+    equipmentCondition: Array<{ type: string; good: number; fair: number; needs_attention: number }>;
 };
 
-export default function SchoolDashboard({ school, resourceSummary }: Props) {
+export default function SchoolDashboard({ school, activeSchoolYear, stats, enrollmentByGrade, equipmentCondition }: Props) {
     const schoolData = ('data' in school ? school.data : school) as School;
     const municipalityBarangay = `${schoolData.municipality ?? '-'} - ${schoolData.barangay ?? '-'}`;
 
@@ -45,10 +60,18 @@ export default function SchoolDashboard({ school, resourceSummary }: Props) {
         <>
             <Head title="School Dashboard" />
 
-            <div className="space-y-6 p-4 md:p-6">
-                <section className="rounded-2xl border border-input bg-background p-5 shadow-sm">
-                    <h1 className="text-2xl font-bold text-foreground">{schoolData.school_name} - {schoolData.school_id}</h1>
-                    <div className="mt-4">
+            <div className="space-y-4 p-3 md:p-4">
+                <section className="rounded-2xl border border-input bg-background p-4 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h1 className="text-xl font-bold text-foreground">{schoolData.school_name} - {schoolData.school_id}</h1>
+                        {activeSchoolYear && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-foreground">
+                                <CalendarRange className="size-3.5 text-muted-foreground" />
+                                SY {activeSchoolYear.name}
+                            </span>
+                        )}
+                    </div>
+                    <div className="mt-3">
                         <table className="w-full text-sm">
                             <tbody>
                                 {schoolDetails.map((item, index) => {
@@ -57,16 +80,16 @@ export default function SchoolDashboard({ school, resourceSummary }: Props) {
 
                                         return (
                                             <tr key={`row-${index}`} className="border-b border-border">
-                                                <td className="w-1/4 py-2 pr-3 font-semibold text-foreground">
+                                                <td className="w-1/4 py-1.5 pr-3 font-semibold text-foreground">
                                                     {item.label}
                                                 </td>
-                                                <td className="w-1/4 py-2 pr-6 text-foreground">{item.value}</td>
+                                                <td className="w-1/4 py-1.5 pr-6 text-foreground">{item.value}</td>
                                                 {nextItem && (
                                                     <>
-                                                        <td className="w-1/4 py-2 pr-3 font-semibold text-foreground">
+                                                        <td className="w-1/4 py-1.5 pr-3 font-semibold text-foreground">
                                                             {nextItem.label}
                                                         </td>
-                                                        <td className="w-1/4 py-2 text-foreground">{nextItem.value}</td>
+                                                        <td className="w-1/4 py-1.5 text-foreground">{nextItem.value}</td>
                                                     </>
                                                 )}
                                             </tr>
@@ -80,30 +103,106 @@ export default function SchoolDashboard({ school, resourceSummary }: Props) {
                     </div>
                 </section>
 
-                <section className="rounded-2xl border border-input bg-background p-5 shadow-sm">
-                    <h2 className="mb-4 text-lg font-semibold text-foreground">Learning Resources Snapshot</h2>
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                        <SummaryCard
-                            label="Resource Entries"
-                            value={resourceSummary.total_resources.toString()}
-                            color="blue"
-                        />
-                        <SummaryCard
-                            label="Delivered Total"
-                            value={resourceSummary.total_delivered.toString()}
-                            color="emerald"
-                        />
-                        <SummaryCard label="With Issues" value={resourceSummary.total_with_issue.toString()} color="amber" />
-                        <SummaryCard label="Issue Rate" value={`${resourceSummary.issue_rate}%`} color="rose" />
-                        <SummaryCard
-                            label="Active Resource Types"
-                            value={resourceSummary.learning_types_count.toString()}
-                            color="violet"
-                        />
-                    </div>
-                    <p className="mt-4 text-sm text-muted-foreground">
-                        To encode, edit, or remove learning resources, open the Learning Resources menu.
-                    </p>
+                <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                    <StatTile
+                        label="Learners"
+                        value={stats.total_learners}
+                        context={
+                            activeSchoolYear
+                                ? `${stats.male_learners.toLocaleString()} male · ${stats.female_learners.toLocaleString()} female`
+                                : 'No active school year'
+                        }
+                        icon={GraduationCap}
+                        colorClassName="bg-violet-950 text-violet-100"
+                    />
+                    <StatTile
+                        label="Printed copies"
+                        value={stats.copies_delivered}
+                        context={`across ${stats.total_resources.toLocaleString()} resource entries`}
+                        icon={BookOpen}
+                        colorClassName="bg-indigo-950 text-indigo-100"
+                    />
+                    <StatTile
+                        label="Defect rate"
+                        value={stats.copies_with_defects}
+                        context={`${stats.defect_rate}% of delivered copies`}
+                        icon={Percent}
+                        colorClassName="bg-rose-950 text-rose-100"
+                    />
+                    <StatTile
+                        label="Equipment units"
+                        value={stats.total_equipment}
+                        context={`${stats.equipment_needing_repair.toLocaleString()} need repair`}
+                        icon={Boxes}
+                        colorClassName="bg-teal-950 text-teal-100"
+                    />
+                    <StatTile
+                        label="Pending deliveries"
+                        value={stats.pending_distributions}
+                        context={`of ${stats.total_distributions.toLocaleString()} distributions`}
+                        icon={Truck}
+                        colorClassName="bg-lime-950 text-lime-100"
+                    />
+                </section>
+
+                <section className="grid gap-3 lg:grid-cols-2">
+                    <ChartCard
+                        title="Enrollment by Grade Level"
+                        subtitle={activeSchoolYear ? `Learners encoded for SY ${activeSchoolYear.name}` : 'No active school year set'}
+                        legend={[
+                            { label: 'Male', color: 'var(--viz-series-1)' },
+                            { label: 'Female', color: 'var(--viz-series-2)' },
+                        ]}
+                        table={{
+                            headers: ['Grade level', 'Male', 'Female', 'Total'],
+                            rows: enrollmentByGrade.map((row) => [row.grade, row.male, row.female, row.male + row.female]),
+                        }}
+                    >
+                        {enrollmentByGrade.length > 0 ? (
+                            <GroupedColumnChart
+                                data={enrollmentByGrade.map((row) => ({ label: row.grade, values: [row.male, row.female] }))}
+                                series={[
+                                    { name: 'Male', color: 'var(--viz-series-1)' },
+                                    { name: 'Female', color: 'var(--viz-series-2)' },
+                                ]}
+                            />
+                        ) : (
+                            <EmptyChart message="No enrollment encoded for the active school year yet. Open the Enrollment menu to encode." />
+                        )}
+                    </ChartCard>
+
+                    <ChartCard
+                        title="Equipment Condition"
+                        subtitle="Serviceable units to the right, units needing repair to the left"
+                        legend={[
+                            { label: 'Needs attention', color: 'var(--viz-bad)' },
+                            { label: 'Fair', color: 'var(--viz-neutral)' },
+                            { label: 'Good', color: 'var(--viz-series-1)' },
+                        ]}
+                        table={{
+                            headers: ['Equipment', 'Good', 'Fair', 'Needs attention', 'Total'],
+                            rows: equipmentCondition.map((row) => [
+                                row.type,
+                                row.good,
+                                row.fair,
+                                row.needs_attention,
+                                row.good + row.fair + row.needs_attention,
+                            ]),
+                        }}
+                    >
+                        {equipmentCondition.some((row) => row.good + row.fair + row.needs_attention > 0) ? (
+                            <DivergingStackedBar
+                                rows={equipmentCondition.map((row) => ({
+                                    label: row.type,
+                                    negative: row.needs_attention,
+                                    neutral: row.fair,
+                                    positive: row.good,
+                                }))}
+                            />
+                        ) : (
+                            <EmptyChart message="No equipment registered yet. Use the ICT Equipments, Science and Math, or Other Materials menus to register." />
+                        )}
+                    </ChartCard>
                 </section>
             </div>
         </>
@@ -118,36 +217,3 @@ SchoolDashboard.layout = {
         },
     ],
 };
-
-type CardColor = 'blue' | 'emerald' | 'amber' | 'rose' | 'violet';
-
-function getCardColors(color: CardColor): { border: string; bg: string; label: string; value: string } {
-    const colors: Record<CardColor, { border: string; bg: string; label: string; value: string }> = {
-        blue: { border: 'border-blue-300', bg: 'bg-blue-50', label: 'text-blue-600', value: 'text-blue-900' },
-        emerald: { border: 'border-emerald-300', bg: 'bg-emerald-50', label: 'text-emerald-600', value: 'text-emerald-900' },
-        amber: { border: 'border-amber-300', bg: 'bg-amber-50', label: 'text-amber-600', value: 'text-amber-900' },
-        rose: { border: 'border-rose-300', bg: 'bg-rose-50', label: 'text-rose-600', value: 'text-rose-900' },
-        violet: { border: 'border-violet-300', bg: 'bg-violet-50', label: 'text-violet-600', value: 'text-violet-900' },
-    };
-
-    return colors[color];
-}
-
-function SummaryCard({
-    label,
-    value,
-    color = 'blue',
-}: {
-    label: string;
-    value: string;
-    color?: CardColor;
-}) {
-    const colors = getCardColors(color);
-
-    return (
-        <article className={`rounded-xl border ${colors.border} ${colors.bg} p-4`}>
-            <p className={`text-xs font-medium uppercase tracking-wide ${colors.label}`}>{label}</p>
-            <p className={`mt-2 text-2xl font-semibold ${colors.value}`}>{value}</p>
-        </article>
-    );
-}

@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\District;
-use App\Models\Equipment;
+use App\Models\IctEquipment;
 use App\Models\Municipality;
+use App\Models\OtherEquipment;
 use App\Models\School;
 use App\Models\SchoolYear;
+use App\Models\Sme;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -40,9 +42,11 @@ class ReportsController extends Controller
                 'total_available' => $adequacy->sum('available_copies'),
                 'schools_in_shortage' => $adequacy->where('shortage', '>', 0)->count(),
             ],
-            'equipmentByCategory' => $this->equipmentByCategory($districtId, $municipalityId),
-            'equipmentByStatus' => $this->equipmentByStatus($districtId, $municipalityId),
-            'equipmentConditions' => Equipment::CONDITIONS,
+            'ictEquipmentByCategory' => $this->categoryBreakdown(IctEquipment::class, $districtId, $municipalityId),
+            'ictEquipmentByStatus' => $this->statusBreakdown(IctEquipment::class, $districtId, $municipalityId),
+            'otherEquipmentByCategory' => $this->categoryBreakdown(OtherEquipment::class, $districtId, $municipalityId),
+            'otherEquipmentByStatus' => $this->statusBreakdown(OtherEquipment::class, $districtId, $municipalityId),
+            'equipmentConditions' => IctEquipment::CONDITIONS,
         ]);
     }
 
@@ -70,19 +74,39 @@ class ReportsController extends Controller
         );
     }
 
-    public function exportEquipment(Request $request): StreamedResponse
+    public function exportIctEquipment(Request $request): StreamedResponse
+    {
+        return $this->exportEquipmentSummary(
+            IctEquipment::class,
+            'ict_equipment',
+            $request,
+            'ict-equipment-summary.csv',
+        );
+    }
+
+    public function exportOtherEquipment(Request $request): StreamedResponse
+    {
+        return $this->exportEquipmentSummary(
+            OtherEquipment::class,
+            'other_equipment',
+            $request,
+            'other-equipment-summary.csv',
+        );
+    }
+
+    public function exportSme(Request $request): StreamedResponse
     {
         $rows = $this
-            ->equipmentQuery($request->integer('district_id'), $request->integer('municipality_id'))
-            ->join('schools', 'schools.id', '=', 'equipment.school_id')
+            ->smeQuery($request->integer('district_id'), $request->integer('municipality_id'))
+            ->join('schools', 'schools.id', '=', 'sme.school_id')
             ->whereNull('schools.deleted_at')
-            ->select('schools.school_id', 'schools.school_name', 'equipment.category', 'equipment.condition', 'equipment.status')
+            ->select('schools.school_id', 'schools.school_name', 'sme.category', 'sme.condition', 'sme.status')
             ->selectRaw('count(*) as total')
-            ->groupBy('schools.school_id', 'schools.school_name', 'equipment.category', 'equipment.condition', 'equipment.status')
+            ->groupBy('schools.school_id', 'schools.school_name', 'sme.category', 'sme.condition', 'sme.status')
             ->orderBy('schools.school_name')
-            ->orderBy('equipment.category')
+            ->orderBy('sme.category')
             ->get()
-            ->map(fn (Equipment $row): array => [
+            ->map(fn (Sme $row): array => [
                 $row->school_id,
                 $row->school_name,
                 $row->category,
@@ -92,7 +116,7 @@ class ReportsController extends Controller
             ]);
 
         return $this->streamCsv(
-            'equipment-summary.csv',
+            'sme-summary.csv',
             ['School ID', 'School Name', 'Category', 'Condition', 'Status', 'Total'],
             $rows,
         );
@@ -137,11 +161,12 @@ class ReportsController extends Controller
     }
 
     /**
+     * @param  class-string<IctEquipment|OtherEquipment>  $modelClass
      * @return Collection<int, array<string, mixed>>
      */
-    private function equipmentByCategory(int $districtId, int $municipalityId): Collection
+    private function categoryBreakdown(string $modelClass, int $districtId, int $municipalityId): Collection
     {
-        return $this->equipmentQuery($districtId, $municipalityId)
+        return $this->equipmentQuery($modelClass, $districtId, $municipalityId)
             ->select('category', 'condition')
             ->selectRaw('count(*) as total')
             ->groupBy('category', 'condition')
@@ -157,20 +182,66 @@ class ReportsController extends Controller
     }
 
     /**
+     * @param  class-string<IctEquipment|OtherEquipment>  $modelClass
      * @return Collection<string, int>
      */
-    private function equipmentByStatus(int $districtId, int $municipalityId): Collection
+    private function statusBreakdown(string $modelClass, int $districtId, int $municipalityId): Collection
     {
-        return $this->equipmentQuery($districtId, $municipalityId)
+        return $this->equipmentQuery($modelClass, $districtId, $municipalityId)
             ->select('status')
             ->selectRaw('count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
     }
 
-    private function equipmentQuery(int $districtId, int $municipalityId): Builder
+    /**
+     * @param  class-string<IctEquipment|OtherEquipment>  $modelClass
+     */
+    private function exportEquipmentSummary(string $modelClass, string $table, Request $request, string $filename): StreamedResponse
     {
-        return Equipment::query()
+        $rows = $this
+            ->equipmentQuery($modelClass, $request->integer('district_id'), $request->integer('municipality_id'))
+            ->join('schools', 'schools.id', '=', "{$table}.school_id")
+            ->whereNull('schools.deleted_at')
+            ->select('schools.school_id', 'schools.school_name', "{$table}.category", "{$table}.condition", "{$table}.status")
+            ->selectRaw('count(*) as total')
+            ->groupBy('schools.school_id', 'schools.school_name', "{$table}.category", "{$table}.condition", "{$table}.status")
+            ->orderBy('schools.school_name')
+            ->orderBy("{$table}.category")
+            ->get()
+            ->map(fn ($row): array => [
+                $row->school_id,
+                $row->school_name,
+                $row->category,
+                $row->condition,
+                $row->status,
+                $row->total,
+            ]);
+
+        return $this->streamCsv(
+            $filename,
+            ['School ID', 'School Name', 'Category', 'Condition', 'Status', 'Total'],
+            $rows,
+        );
+    }
+
+    /**
+     * @param  class-string<IctEquipment|OtherEquipment>  $modelClass
+     */
+    private function equipmentQuery(string $modelClass, int $districtId, int $municipalityId): Builder
+    {
+        return $modelClass::query()
+            ->when($districtId > 0 || $municipalityId > 0, fn (Builder $query) => $query->whereHas(
+                'school',
+                fn (Builder $schoolQuery) => $schoolQuery
+                    ->when($districtId > 0, fn (Builder $q) => $q->where('district_id', $districtId))
+                    ->when($municipalityId > 0, fn (Builder $q) => $q->where('municipality_id', $municipalityId)),
+            ));
+    }
+
+    private function smeQuery(int $districtId, int $municipalityId): Builder
+    {
+        return Sme::query()
             ->when($districtId > 0 || $municipalityId > 0, fn (Builder $query) => $query->whereHas(
                 'school',
                 fn (Builder $schoolQuery) => $schoolQuery

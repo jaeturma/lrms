@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
@@ -25,19 +25,27 @@ export default function AdminLoginPage() {
 
                         <div className="space-y-1">
                             <Label htmlFor="email">Email</Label>
-                            <Input id="email" type="email" name="email" required autoFocus autoComplete="email" />
+                            <Input id="email" type="email" name="email" maxLength={50} required autoFocus autoComplete="email" />
                             <InputError message={errors.email} />
                         </div>
 
                         <div className="space-y-1">
                             <Label htmlFor="password">Password</Label>
-                            <PasswordInput id="password" name="password" required autoComplete="current-password" />
+                            <PasswordInput id="password" name="password" maxLength={30} required autoComplete="current-password" />
                             <InputError message={errors.password} />
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <Checkbox id="remember" name="remember" />
-                            <Label htmlFor="remember">Remember me</Label>
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <Checkbox id="remember" name="remember" />
+                                <Label htmlFor="remember">Remember me</Label>
+                            </div>
+                            <Link
+                                href="/forgot-password"
+                                className="text-sm text-primary underline underline-offset-4"
+                            >
+                                Forgot Password?
+                            </Link>
                         </div>
 
                         <Button type="submit" className="w-full" disabled={processing}>

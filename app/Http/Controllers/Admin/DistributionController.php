@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreResourceDistributionRequest;
-use App\Models\LearningResourceType;
 use App\Models\ResourceDistribution;
+use App\Models\ResourceTitle;
 use App\Models\School;
 use App\Services\ResourceDistributionService;
 use Illuminate\Http\RedirectResponse;
@@ -21,12 +21,15 @@ class DistributionController extends Controller
         $status = $request->string('status')->toString();
 
         $distributions = ResourceDistribution::query()
-            ->with(['school:id,school_id,school_name', 'learningResourceType:id,name', 'creator:id,name', 'receiver:id,name'])
+            ->with(['school:id,school_id,school_name', 'learningResourceType:id,name', 'resourceTitle:id,title,author', 'creator:id,name', 'receiver:id,name'])
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($nestedQuery) use ($search): void {
                     $nestedQuery
                         ->where('reference_code', 'like', "%{$search}%")
                         ->orWhere('title', 'like', "%{$search}%")
+                        ->orWhereHas('resourceTitle', function ($titleQuery) use ($search): void {
+                            $titleQuery->where('author', 'like', "%{$search}%");
+                        })
                         ->orWhereHas('school', function ($schoolQuery) use ($search): void {
                             $schoolQuery
                                 ->where('school_name', 'like', "%{$search}%")
@@ -45,7 +48,9 @@ class DistributionController extends Controller
                 'school_name' => $distribution->school?->school_name,
                 'school_code' => $distribution->school?->school_id,
                 'resource_type' => $distribution->learningResourceType?->name,
+                'resource_title_id' => $distribution->resource_title_id,
                 'title' => $distribution->title,
+                'author' => $distribution->resourceTitle?->author,
                 'publisher' => $distribution->publisher,
                 'quantity' => $distribution->quantity,
                 'quantity_damaged' => $distribution->quantity_damaged,
@@ -65,7 +70,19 @@ class DistributionController extends Controller
             'statuses' => ResourceDistribution::STATUSES,
             'distributions' => $distributions,
             'schools' => School::query()->orderBy('school_name')->get(['id', 'school_name']),
-            'resourceTypes' => LearningResourceType::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'resourceTitles' => ResourceTitle::query()
+                ->with(['learningResourceType:id,name', 'gradeLevel:id,name'])
+                ->where('is_active', true)
+                ->orderBy('title')
+                ->get()
+                ->map(fn (ResourceTitle $title): array => [
+                    'id' => $title->id,
+                    'title' => $title->title,
+                    'author' => $title->author,
+                    'publisher' => $title->publisher,
+                    'resource_type' => $title->learningResourceType?->name,
+                    'grade_level' => $title->gradeLevel?->name,
+                ]),
             'summary' => ResourceDistribution::query()
                 ->selectRaw('status, count(*) as total')
                 ->groupBy('status')

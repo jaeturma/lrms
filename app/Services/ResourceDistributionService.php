@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\LearningResource;
 use App\Models\ResourceDistribution;
+use App\Models\ResourceTitle;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -20,8 +21,16 @@ class ResourceDistributionService
     public function create(array $data, User $user): ResourceDistribution
     {
         return DB::transaction(function () use ($data, $user): ResourceDistribution {
+            $resourceTitle = ResourceTitle::query()
+                ->whereKey($data['resource_title_id'])
+                ->where('is_active', true)
+                ->firstOrFail();
+
             $distribution = ResourceDistribution::create([
                 ...$data,
+                'learning_resource_type_id' => $resourceTitle->learning_resource_type_id,
+                'title' => $resourceTitle->title,
+                'publisher' => $resourceTitle->publisher,
                 'status' => 'pending',
                 'created_by' => $user->id,
             ]);
@@ -52,8 +61,17 @@ class ResourceDistributionService
             $resource = LearningResource::create([
                 'school_id' => $distribution->school_id,
                 'learning_resource_type_id' => $distribution->learning_resource_type_id,
+                'resource_title_id' => $distribution->resource_title_id,
                 'title' => $distribution->title,
+                'author' => $distribution->resourceTitle?->author,
                 'publisher' => $distribution->publisher,
+                'language' => $distribution->resourceTitle?->language,
+                'subject' => $distribution->resourceTitle?->subject,
+                'volume' => $distribution->resourceTitle?->volume,
+                'edition' => $distribution->resourceTitle?->edition,
+                'copyright_year' => $distribution->resourceTitle?->copyright_year,
+                'pages' => $distribution->resourceTitle?->pages,
+                'isbn' => $distribution->resourceTitle?->isbn,
                 'quantity_delivered' => $distribution->quantity,
                 'quantity_with_issue_defect' => $quantityDamaged,
                 'remarks' => "Received from division delivery {$distribution->reference_code}",

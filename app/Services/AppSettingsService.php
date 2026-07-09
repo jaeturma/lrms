@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AppSetting;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Crypt;
 
 class AppSettingsService
@@ -17,6 +18,7 @@ class AppSettingsService
 
     /** @var array<int, string> */
     private const SMTP_KEYS = [
+        'smtp_enabled',
         'smtp_host',
         'smtp_port',
         'smtp_username',
@@ -42,13 +44,14 @@ class AppSettingsService
     }
 
     /**
-     * @return array<string, string|null>
+     * @return array<string, string|bool|null>
      */
     public function smtp(): array
     {
         $values = AppSetting::valuesFor(self::SMTP_KEYS);
 
         return [
+            'smtp_enabled' => $values->get('smtp_enabled') === '1',
             'smtp_host' => $values->get('smtp_host'),
             'smtp_port' => $values->get('smtp_port'),
             'smtp_username' => $values->get('smtp_username'),
@@ -57,6 +60,33 @@ class AppSettingsService
             'smtp_from_address' => $values->get('smtp_from_address'),
             'smtp_from_name' => $values->get('smtp_from_name'),
         ];
+    }
+
+    /**
+     * Apply the admin-configured SMTP settings to the runtime mail config.
+     *
+     * Returns false (and leaves the mail config untouched) unless SMTP is
+     * explicitly enabled and a host/port are configured, so callers can
+     * decide whether to attempt sending at all.
+     */
+    public function applyToMailer(): bool
+    {
+        $smtp = $this->smtp();
+
+        if (! $smtp['smtp_enabled'] || ! $smtp['smtp_host'] || ! $smtp['smtp_port']) {
+            return false;
+        }
+
+        Config::set('mail.default', 'smtp');
+        Config::set('mail.mailers.smtp.host', $smtp['smtp_host']);
+        Config::set('mail.mailers.smtp.port', (int) $smtp['smtp_port']);
+        Config::set('mail.mailers.smtp.username', $smtp['smtp_username']);
+        Config::set('mail.mailers.smtp.password', $smtp['smtp_password']);
+        Config::set('mail.mailers.smtp.encryption', $smtp['smtp_encryption'] ?: null);
+        Config::set('mail.from.address', $smtp['smtp_from_address'] ?: config('mail.from.address'));
+        Config::set('mail.from.name', $smtp['smtp_from_name'] ?: config('mail.from.name'));
+
+        return true;
     }
 
     /**
@@ -69,6 +99,7 @@ class AppSettingsService
             'login_logo_url' => $this->toNullableString($data['login_logo_url'] ?? null),
             'app_title' => (string) ($data['app_title'] ?? ''),
             'app_logo_url' => $this->toNullableString($data['app_logo_url'] ?? null),
+            'smtp_enabled' => ! empty($data['smtp_enabled']) ? '1' : '0',
             'smtp_host' => $this->toNullableString($data['smtp_host'] ?? null),
             'smtp_port' => $this->toNullableString($data['smtp_port'] ?? null),
             'smtp_username' => $this->toNullableString($data['smtp_username'] ?? null),

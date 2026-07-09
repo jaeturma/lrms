@@ -1,4 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
+import { BookText } from 'lucide-react';
+import { PageHeaderIcon } from '@/components/page-header-icon';
 
 type MaterialRow = {
     id: number;
@@ -31,13 +33,19 @@ export default function AdminLearningMaterials({ filters, materials }: Props) {
 
             <main className="min-h-screen bg-background/40 p-4 md:p-8">
                 <div className="mx-auto max-w-7xl space-y-6">
-                    <header className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <h1 className="text-2xl font-bold text-foreground">
-                            Learning Materials
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            View all learning materials encoded by schools.
-                        </p>
+                    <header className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+                        <PageHeaderIcon
+                            icon={BookText}
+                            className="bg-indigo-950 text-indigo-400 dark:bg-indigo-900/60 dark:text-indigo-300"
+                        />
+                        <div>
+                            <h1 className="text-2xl font-bold text-foreground">
+                                Learning Materials
+                            </h1>
+                            <p className="text-sm text-muted-foreground">
+                                View all learning materials encoded by schools.
+                            </p>
+                        </div>
                     </header>
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
