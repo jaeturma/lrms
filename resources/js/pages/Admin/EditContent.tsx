@@ -33,7 +33,7 @@ export default function EditContent({ content, type }: Props) {
         <>
             <Head title={title} />
 
-            <div className="space-y-6 p-4 md:p-6">
+            <div className="space-y-4 bg-background/40 p-3 md:p-4">
                 <div className="flex items-center justify-between">
                     <h1 className="text-3xl font-bold text-foreground">{title}</h1>
                     <button

@@ -45,11 +45,11 @@ export default function AdminIctEquipment({ filters, categories, statuses, equip
         <>
             <Head title="ICT Equipment" />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
-                <div className="mx-auto max-w-7xl space-y-6">
+            <main className="bg-background/40 p-3 md:p-4">
+                <div className="space-y-4">
                     <PageHeader
                         icon={MonitorSmartphone}
-                        iconClassName="bg-teal-950 text-teal-400 dark:bg-teal-900/60 dark:text-teal-300"
+                        iconClassName="bg-teal-100 text-teal-600 dark:bg-teal-900/60 dark:text-teal-300"
                         title="ICT Equipment"
                         description={`Division-wide view of ICT equipment registered by schools (${summary.total.toLocaleString()} items).`}
                         align="start"

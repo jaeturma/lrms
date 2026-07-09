@@ -12,7 +12,7 @@ export default function AboutPage({ content }: Props) {
         <>
             <Head title="About" />
 
-            <div className="space-y-6 p-4 md:p-6">
+            <div className="space-y-4 bg-background/40 p-3 md:p-4">
                 <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                     <h1 className="text-3xl font-bold text-foreground">{content.title}</h1>
                     <div

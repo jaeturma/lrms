@@ -170,11 +170,11 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
         <>
             <Head title="SME Catalog" />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
-                <div className="mx-auto max-w-7xl space-y-6">
+            <main className="bg-background/40 p-3 md:p-4">
+                <div className="space-y-4">
                     <PageHeader
                         icon={FlaskConical}
-                        iconClassName="bg-rose-950 text-rose-400 dark:bg-rose-900/60 dark:text-rose-300"
+                        iconClassName="bg-rose-100 text-rose-600 dark:bg-rose-900/60 dark:text-rose-300"
                         title="SME Catalog"
                         description={`Division-managed list of Science & Math Equipment (${catalogItems.total.toLocaleString()} items). Schools pick from this catalog when registering the SME items in their possession.`}
                         actions={

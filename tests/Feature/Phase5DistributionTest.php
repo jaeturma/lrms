@@ -194,6 +194,89 @@ test('damaged quantity cannot exceed the delivered quantity', function () {
     expect($distribution->refresh()->status)->toBe('pending');
 });
 
+test('receiving a second distribution of the same title reuses the existing learning resource', function () {
+    [$school, $user] = createDistributionSchoolUser();
+    $title = ResourceTitle::factory()->create([
+        'title' => 'Grade 5 English Reader',
+        'publisher' => 'DepEd Central',
+    ]);
+
+    $first = ResourceDistribution::factory()->create([
+        'school_id' => $school->id,
+        'learning_resource_type_id' => $title->learning_resource_type_id,
+        'resource_title_id' => $title->id,
+        'title' => $title->title,
+        'publisher' => $title->publisher,
+        'quantity' => 50,
+    ]);
+    $second = ResourceDistribution::factory()->create([
+        'school_id' => $school->id,
+        'learning_resource_type_id' => $title->learning_resource_type_id,
+        'resource_title_id' => $title->id,
+        'title' => $title->title,
+        'publisher' => $title->publisher,
+        'quantity' => 30,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('school.distributions.receive', $first), ['quantity_damaged' => 5])
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($user)
+        ->post(route('school.distributions.receive', $second), ['quantity_damaged' => 2])
+        ->assertSessionHasNoErrors();
+
+    // Only one LearningResource row exists for this school + title — the
+    // second receipt did not create a duplicate.
+    expect(LearningResource::where('school_id', $school->id)->count())->toBe(1);
+
+    $resource = LearningResource::where('school_id', $school->id)->sole();
+
+    $first->refresh();
+    $second->refresh();
+
+    expect($first->learning_resource_id)->toBe($resource->id);
+    expect($second->learning_resource_id)->toBe($resource->id);
+
+    // Quantities from both receipts are combined on the single row.
+    expect($resource->quantity_delivered)->toBe(80);
+    expect($resource->quantity_with_issue_defect)->toBe(7);
+
+    $inventory = $resource->inventory;
+
+    expect($inventory->available)->toBe(73); // (50-5) + (30-2)
+    expect($inventory->damaged)->toBe(7);
+});
+
+test('movement history from both receipts is preserved on the shared resource', function () {
+    [$school, $user] = createDistributionSchoolUser();
+    $title = ResourceTitle::factory()->create();
+
+    $first = ResourceDistribution::factory()->create([
+        'school_id' => $school->id,
+        'learning_resource_type_id' => $title->learning_resource_type_id,
+        'resource_title_id' => $title->id,
+        'quantity' => 20,
+    ]);
+    $second = ResourceDistribution::factory()->create([
+        'school_id' => $school->id,
+        'learning_resource_type_id' => $title->learning_resource_type_id,
+        'resource_title_id' => $title->id,
+        'quantity' => 10,
+    ]);
+
+    $this->actingAs($user)->post(route('school.distributions.receive', $first), ['quantity_damaged' => 0]);
+    $this->actingAs($user)->post(route('school.distributions.receive', $second), ['quantity_damaged' => 3]);
+
+    $resource = LearningResource::where('school_id', $school->id)->sole();
+
+    // Both receipts recorded movements against the one surviving resource —
+    // nothing was lost, and no movement was silently dropped or overwritten.
+    expect($resource->inventoryMovements()->count())->toBe(3); // received, received, damaged
+    expect($resource->inventoryMovements()->where('type', 'received')->count())->toBe(2);
+    expect($resource->inventoryMovements()->where('type', 'damaged')->count())->toBe(1);
+});
+
 test('a school cannot receive another schools delivery', function () {
     [, $user] = createDistributionSchoolUser();
 

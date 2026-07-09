@@ -83,11 +83,11 @@ export default function AdminReports({
         <>
             <Head title="Reports" />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
-                <div className="mx-auto max-w-7xl space-y-6">
+            <main className="bg-background/40 p-3 md:p-4">
+                <div className="space-y-4">
                     <PageHeader
                         icon={ChartColumn}
-                        iconClassName="bg-orange-950 text-orange-400 dark:bg-orange-900/60 dark:text-orange-300"
+                        iconClassName="bg-orange-100 text-orange-600 dark:bg-orange-900/60 dark:text-orange-300"
                         title="Division Reports"
                         description={`Learning resource adequacy and equipment condition summaries across the division${selectedSchoolYear ? ` for SY ${selectedSchoolYear.name}` : ''}.`}
                         align="start"

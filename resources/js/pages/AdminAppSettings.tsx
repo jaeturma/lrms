@@ -97,12 +97,12 @@ export default function AdminAppSettings({ settings }: Props) {
         <>
             <Head title="App Settings" />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
-                <div className="mx-auto max-w-5xl space-y-6">
+            <main className="bg-background/40 p-3 md:p-4">
+                <div className="space-y-4">
                     <header className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <PageHeaderIcon
                             icon={Cog}
-                            className="bg-slate-950 text-slate-400 dark:bg-slate-900/60 dark:text-slate-300"
+                            className="bg-slate-100 text-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
                         />
                         <div>
                             <h1 className="text-2xl font-bold text-foreground">App Settings</h1>

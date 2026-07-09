@@ -174,7 +174,7 @@ export default function AdminDashboard({
                     <div className="flex items-center gap-3">
                         <PageHeaderIcon
                             icon={LayoutGrid}
-                            className="bg-slate-950 text-slate-400 dark:bg-slate-900/60 dark:text-slate-300"
+                            className="bg-slate-100 text-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
                         />
                         <div>
                             <h1 className="text-xl font-bold text-foreground">Division Dashboard</h1>
@@ -251,7 +251,7 @@ export default function AdminDashboard({
                         value={stats.total_schools}
                         context={`${stats.activated_schools.toLocaleString()} activated (${activationRate}%)`}
                         icon={Building2}
-                        colorClassName="bg-blue-950 text-blue-100"
+                        colorClassName="bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-200"
                     />
                     <StatTile
                         label="Learners"
@@ -262,35 +262,35 @@ export default function AdminDashboard({
                                 : 'No active school year'
                         }
                         icon={GraduationCap}
-                        colorClassName="bg-violet-950 text-violet-100"
+                        colorClassName="bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-200"
                     />
                     <StatTile
                         label="Printed copies"
                         value={stats.copies_delivered}
                         context={`${stats.defect_rate}% with defects`}
                         icon={BookOpen}
-                        colorClassName="bg-indigo-950 text-indigo-100"
+                        colorClassName="bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-200"
                     />
                     <StatTile
                         label="Equipment units"
                         value={stats.total_equipment}
                         context={`${stats.equipment_needing_repair.toLocaleString()} need repair`}
                         icon={Boxes}
-                        colorClassName="bg-teal-950 text-teal-100"
+                        colorClassName="bg-teal-100 text-teal-700 dark:bg-teal-950/60 dark:text-teal-200"
                     />
                     <StatTile
                         label="Digital LMs"
                         value={stats.digital_lms}
                         context={`${stats.digital_lms_quality_assured.toLocaleString()} quality-assured`}
                         icon={MonitorPlay}
-                        colorClassName="bg-cyan-950 text-cyan-100"
+                        colorClassName="bg-cyan-100 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-200"
                     />
                     <StatTile
                         label="Pending deliveries"
                         value={stats.pending_distributions}
                         context={`of ${stats.total_distributions.toLocaleString()} distributions`}
                         icon={Truck}
-                        colorClassName="bg-lime-950 text-lime-100"
+                        colorClassName="bg-lime-100 text-lime-700 dark:bg-lime-950/60 dark:text-lime-200"
                     />
                 </section>
 

@@ -145,10 +145,10 @@ export default function AdminSchoolsIndex({ districts, filters, schools }: Props
         <>
             <Head title="Schools Management" />
 
-            <div className="space-y-6 bg-muted/50 p-4 md:p-6">
+            <div className="space-y-4 bg-background/40 p-3 md:p-4">
                 <PageHeader
                     icon={School}
-                    iconClassName="bg-blue-950 text-blue-400 dark:bg-blue-900/60 dark:text-blue-300"
+                    iconClassName="bg-blue-100 text-blue-600 dark:bg-blue-900/60 dark:text-blue-300"
                     title="Schools Management"
                     description="Create, update, and remove schools."
                     className="border-input bg-background"

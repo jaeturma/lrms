@@ -288,7 +288,7 @@ export default function SchoolIctEquipment({ equipment, movements, catalog, cate
         <>
             <Head title="ICT Equipment" />
 
-            <div className="space-y-6 p-4 md:p-6">
+            <div className="space-y-4 bg-background/40 p-3 md:p-4">
                 <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                         <div>

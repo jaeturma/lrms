@@ -86,7 +86,7 @@ export default function AdminSchoolEdit({ school, schoolTypes, districts, munici
         <>
             <Head title={`Edit ${school.school_name}`} />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
+            <main className="bg-background/40 p-3 md:p-4">
                 <div className="mx-auto max-w-7xl rounded-2xl border border-border bg-card/95 p-6 shadow-md md:p-8">
                     <div className="mb-6 flex items-center justify-between">
                         <h1 className="text-xl font-bold text-foreground">Edit School</h1>

@@ -311,7 +311,7 @@ export default function SchoolLearningResources({ learningResources, learningRes
         <>
             <Head title="Learning Resources" />
 
-            <div className="space-y-6 p-4 md:p-6">
+            <div className="space-y-4 bg-background/40 p-3 md:p-4">
                 <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                         <h2 className="text-lg font-semibold text-foreground">Learning Resources List</h2>

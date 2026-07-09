@@ -170,11 +170,11 @@ export default function AdminOtherEquipmentCatalog({ filters, categories, catalo
         <>
             <Head title="Other Equipment Catalog" />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
-                <div className="mx-auto max-w-7xl space-y-6">
+            <main className="bg-background/40 p-3 md:p-4">
+                <div className="space-y-4">
                     <PageHeader
                         icon={PackageSearch}
-                        iconClassName="bg-orange-950 text-orange-400 dark:bg-orange-900/60 dark:text-orange-300"
+                        iconClassName="bg-orange-100 text-orange-600 dark:bg-orange-900/60 dark:text-orange-300"
                         title="Other Equipment Catalog"
                         description={`Division-managed list of TVL, ALS, Library, SPED, Sports, and other equipment (${catalogItems.total.toLocaleString()} items). Schools pick from this catalog when registering the equipment in their possession.`}
                         actions={

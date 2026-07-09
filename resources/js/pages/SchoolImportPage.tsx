@@ -66,7 +66,7 @@ export default function SchoolImportPage({ summary }: Props) {
         <>
             <Head title="School Import" />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
+            <main className="bg-background/40 p-3 md:p-4">
                 <div className="mx-auto max-w-4xl space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
                     <div className="flex items-center justify-between gap-3">
                         <div>

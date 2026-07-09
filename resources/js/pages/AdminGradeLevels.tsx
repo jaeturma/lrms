@@ -68,11 +68,11 @@ export default function AdminGradeLevels({ gradeLevels }: Props) {
         <>
             <Head title="Grade Levels" />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
-                <div className="mx-auto max-w-5xl space-y-6">
+            <main className="bg-background/40 p-3 md:p-4">
+                <div className="space-y-4">
                     <PageHeader
                         icon={GraduationCap}
-                        iconClassName="bg-violet-950 text-violet-400 dark:bg-violet-900/60 dark:text-violet-300"
+                        iconClassName="bg-violet-100 text-violet-600 dark:bg-violet-900/60 dark:text-violet-300"
                         title="Grade Levels"
                         description="Manage the grade levels available for school enrollment encoding."
                     />

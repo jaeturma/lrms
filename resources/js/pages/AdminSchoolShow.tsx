@@ -102,11 +102,11 @@ export default function AdminSchoolShow({
         <>
             <Head title={`${school.school_name} - ${school.school_id}`} />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
-                <div className="mx-auto max-w-6xl space-y-6">
+            <main className="bg-background/40 p-3 md:p-4">
+                <div className="space-y-4">
                     <PageHeader
                         icon={SchoolIcon}
-                        iconClassName="bg-blue-950 text-blue-400 dark:bg-blue-900/60 dark:text-blue-300"
+                        iconClassName="bg-blue-100 text-blue-600 dark:bg-blue-900/60 dark:text-blue-300"
                         title={`${school.school_name} - ${school.school_id}`}
                         actions={
                             <>

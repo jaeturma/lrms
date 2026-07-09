@@ -102,11 +102,11 @@ export default function AdminDistributions({ filters, statuses, distributions, s
         <>
             <Head title="Distributions" />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
-                <div className="mx-auto max-w-7xl space-y-6">
+            <main className="bg-background/40 p-3 md:p-4">
+                <div className="space-y-4">
                     <PageHeader
                         icon={Truck}
-                        iconClassName="bg-lime-950 text-lime-400 dark:bg-lime-900/60 dark:text-lime-300"
+                        iconClassName="bg-lime-100 text-lime-600 dark:bg-lime-900/60 dark:text-lime-300"
                         title="Resource Distributions"
                         description="Deliveries of learning resources from the division to schools. Schools confirm receipt to add copies into their inventories."
                         align="start"

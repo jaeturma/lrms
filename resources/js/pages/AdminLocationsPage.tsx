@@ -276,12 +276,12 @@ export default function AdminLocationsPage({
         <>
             <Head title={pageTitle} />
 
-            <div className="space-y-6 bg-muted/50 p-4 md:p-6">
+            <div className="space-y-4 bg-background/40 p-3 md:p-4">
                 <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-input bg-background p-5 shadow-sm">
                     <div className="flex items-center gap-4">
                         <PageHeaderIcon
                             icon={LibraryBig}
-                            className="bg-violet-950 text-violet-400 dark:bg-violet-900/60 dark:text-violet-300"
+                            className="bg-violet-100 text-violet-600 dark:bg-violet-900/60 dark:text-violet-300"
                         />
                         <div>
                             <h1 className="text-2xl font-bold text-foreground">{pageTitle}</h1>

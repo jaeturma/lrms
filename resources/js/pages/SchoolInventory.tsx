@@ -117,7 +117,7 @@ export default function SchoolInventory({ resources, movements, transitionSource
         <>
             <Head title="Inventory" />
 
-            <div className="space-y-6 p-4 md:p-6">
+            <div className="space-y-4 bg-background/40 p-3 md:p-4">
                 <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                     <div className="mb-4">
                         <h2 className="text-lg font-semibold text-foreground">Learning Resource Inventory</h2>

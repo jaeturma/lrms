@@ -50,6 +50,35 @@ class LearningResourceInventoryService
     }
 
     /**
+     * Apply an additional receipt (e.g. a second distribution of the same
+     * catalog title) to a resource that already has an inventory, adding
+     * to its existing balances rather than reinitializing them.
+     */
+    public function receiveAdditional(LearningResource $resource, int $delivered, int $damaged, ?User $user = null): void
+    {
+        $damaged = min($damaged, $delivered);
+        $available = $delivered - $damaged;
+
+        DB::transaction(function () use ($resource, $delivered, $damaged, $available, $user): void {
+            $resource->increment('quantity_delivered', $delivered);
+            $resource->increment('quantity_with_issue_defect', $damaged);
+
+            $inventory = $resource->inventory()->lockForUpdate()->firstOrFail();
+
+            $inventory->update([
+                'available' => $inventory->available + $available,
+                'damaged' => $inventory->damaged + $damaged,
+            ]);
+
+            $this->recordMovementRow($resource, $user, 'received', $delivered, null, 'available', 'Additional delivery received');
+
+            if ($damaged > 0) {
+                $this->recordMovementRow($resource, $user, 'damaged', $damaged, 'available', 'damaged', 'Additional delivery encoded with issue/defect');
+            }
+        });
+    }
+
+    /**
      * Reconcile the inventory after the encoded delivered/defect quantities
      * changed, keeping the adjustment trail in the movement history.
      */

@@ -170,11 +170,11 @@ export default function AdminIctEquipmentCatalog({ filters, categories, catalogI
         <>
             <Head title="ICT Equipment Catalog" />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
-                <div className="mx-auto max-w-7xl space-y-6">
+            <main className="bg-background/40 p-3 md:p-4">
+                <div className="space-y-4">
                     <PageHeader
                         icon={MonitorSmartphone}
-                        iconClassName="bg-teal-950 text-teal-400 dark:bg-teal-900/60 dark:text-teal-300"
+                        iconClassName="bg-teal-100 text-teal-600 dark:bg-teal-900/60 dark:text-teal-300"
                         title="ICT Equipment Catalog"
                         description={`Division-managed list of ICT equipment (${catalogItems.total.toLocaleString()} items). Schools pick from this catalog when registering the equipment in their possession.`}
                         actions={

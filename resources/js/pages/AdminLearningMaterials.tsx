@@ -34,11 +34,11 @@ export default function AdminLearningMaterials({ filters, materials }: Props) {
         <>
             <Head title="Learning Materials" />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
-                <div className="mx-auto max-w-7xl space-y-6">
+            <main className="bg-background/40 p-3 md:p-4">
+                <div className="space-y-4">
                     <PageHeader
                         icon={BookText}
-                        iconClassName="bg-indigo-950 text-indigo-400 dark:bg-indigo-900/60 dark:text-indigo-300"
+                        iconClassName="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/60 dark:text-indigo-300"
                         title="Learning Materials"
                         description="View all learning materials encoded by schools."
                     />

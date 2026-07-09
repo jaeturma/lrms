@@ -83,11 +83,11 @@ export default function SchoolDistributions({ distributions }: Props) {
         <>
             <Head title="Deliveries" />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
-                <div className="mx-auto max-w-6xl space-y-6">
+            <main className="bg-background/40 p-3 md:p-4">
+                <div className="space-y-4">
                     <PageHeader
                         icon={Truck}
-                        iconClassName="bg-lime-950 text-lime-400 dark:bg-lime-900/60 dark:text-lime-300"
+                        iconClassName="bg-lime-100 text-lime-600 dark:bg-lime-900/60 dark:text-lime-300"
                         title="Division Deliveries"
                         description={`Learning resources sent by the division office. Confirming a receipt adds the copies to your inventory${pendingCount > 0 ? ` — ${pendingCount} awaiting confirmation.` : '.'}`}
                     />

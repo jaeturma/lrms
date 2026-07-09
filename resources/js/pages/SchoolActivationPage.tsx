@@ -161,7 +161,7 @@ export default function SchoolActivationPage({
         <>
             <Head title="School Activation" />
 
-            <main className="min-h-screen bg-background/40 px-4 py-8 md:px-8 md:py-12">
+            <main className="bg-background/40 p-3 md:p-4">
                 <div className="mx-auto max-w-7xl rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
                     <h1 className="text-2xl font-bold text-slate-900">School Activation</h1>
                     <p className="mt-1 text-sm text-slate-600">

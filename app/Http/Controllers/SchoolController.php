@@ -276,7 +276,7 @@ class SchoolController extends Controller
             $school->learningResources()
                 ->whereIn('id', $existingIds->diff($submittedIds))
                 ->get()
-                ->each(fn ($resource) => $resource->delete());
+                ->each(fn ($resource) => $resource->forceDelete());
 
             foreach ($resources as $payload) {
                 $catalogTitle = $catalogTitles->get((int) ($payload['resource_title_id'] ?? 0));

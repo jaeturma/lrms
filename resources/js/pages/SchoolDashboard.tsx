@@ -60,7 +60,7 @@ export default function SchoolDashboard({ school, activeSchoolYear, stats, enrol
         <>
             <Head title="School Dashboard" />
 
-            <div className="space-y-4 p-3 md:p-4">
+            <div className="space-y-4 bg-background/40 p-3 md:p-4">
                 <section className="rounded-2xl border border-input bg-background p-4 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <h1 className="text-xl font-bold text-foreground">{schoolData.school_name} - {schoolData.school_id}</h1>
@@ -113,35 +113,35 @@ export default function SchoolDashboard({ school, activeSchoolYear, stats, enrol
                                 : 'No active school year'
                         }
                         icon={GraduationCap}
-                        colorClassName="bg-violet-950 text-violet-100"
+                        colorClassName="bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-200"
                     />
                     <StatTile
                         label="Printed copies"
                         value={stats.copies_delivered}
                         context={`across ${stats.total_resources.toLocaleString()} resource entries`}
                         icon={BookOpen}
-                        colorClassName="bg-indigo-950 text-indigo-100"
+                        colorClassName="bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-200"
                     />
                     <StatTile
                         label="Defect rate"
                         value={stats.copies_with_defects}
                         context={`${stats.defect_rate}% of delivered copies`}
                         icon={Percent}
-                        colorClassName="bg-rose-950 text-rose-100"
+                        colorClassName="bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-200"
                     />
                     <StatTile
                         label="Equipment units"
                         value={stats.total_equipment}
                         context={`${stats.equipment_needing_repair.toLocaleString()} need repair`}
                         icon={Boxes}
-                        colorClassName="bg-teal-950 text-teal-100"
+                        colorClassName="bg-teal-100 text-teal-700 dark:bg-teal-950/60 dark:text-teal-200"
                     />
                     <StatTile
                         label="Pending deliveries"
                         value={stats.pending_distributions}
                         context={`of ${stats.total_distributions.toLocaleString()} distributions`}
                         icon={Truck}
-                        colorClassName="bg-lime-950 text-lime-100"
+                        colorClassName="bg-lime-100 text-lime-700 dark:bg-lime-950/60 dark:text-lime-200"
                     />
                 </section>
 

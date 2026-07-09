@@ -190,11 +190,11 @@ export default function AdminDigitalLearningMaterials({ filters, categories, typ
         <>
             <Head title="Digital Learning Materials" />
 
-            <main className="min-h-screen bg-background/40 p-4 md:p-8">
-                <div className="mx-auto max-w-7xl space-y-6">
+            <main className="bg-background/40 p-3 md:p-4">
+                <div className="space-y-4">
                     <PageHeader
                         icon={MonitorPlay}
-                        iconClassName="bg-cyan-950 text-cyan-400 dark:bg-cyan-900/60 dark:text-cyan-300"
+                        iconClassName="bg-cyan-100 text-cyan-600 dark:bg-cyan-900/60 dark:text-cyan-300"
                         title="Digital Learning Materials"
                         description={`Division-managed library of digital content — PDFs, PPTs, videos, interactive media, digital storybooks, worksheets, e-comics, H5P packages, lesson plans, and test materials (${materials.total.toLocaleString()} items).`}
                     />
