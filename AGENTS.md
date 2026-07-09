@@ -1,3 +1,26 @@
+# AGENTS.md
+
+This repository uses AI-assisted development. Every AI agent (Claude Code, Copilot, Cursor, or any other tool) working in this repository must follow the rules below before and while making changes.
+
+## Required Reading Order
+
+Before making any change, read, in this order:
+
+1. **The `.ai/` folder** — `00-project-overview.md` through `09-ai-behavior.md`, especially [`.ai/07-modules.md`](.ai/07-modules.md) (per-module completion audit — treat as source of truth over this file if they disagree) and [`.ai/08-roadmap.md`](.ai/08-roadmap.md) (forward-looking roadmap).
+2. **[`README.md`](README.md)** — technology stack, architecture, folder structure, modules, roles.
+3. **[`CHANGELOG.md`](CHANGELOG.md)** — current version, what's already built, known issues, in-progress work.
+
+## Rules
+
+1. Read the `.ai` folder first.
+2. Read `README.md`.
+3. Read `CHANGELOG.md`.
+4. Preserve existing workflows — do not change how a route, form, import, or lifecycle currently behaves unless that is the explicit goal of the task.
+5. Never rewrite a working module. Fix or extend it in place; don't replace it wholesale because a cleaner design comes to mind.
+6. Use incremental improvements. Small, reviewable changes over large rewrites.
+7. Preserve backwards compatibility — existing routes, database columns/tables, and permission/role checks must keep working for existing callers unless the task is specifically a breaking migration, agreed with the user first.
+8. Update `CHANGELOG.md` after completing work — add an entry under the current (or a new) version describing what changed, so the next agent's "read `CHANGELOG.md` first" step stays accurate.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 
