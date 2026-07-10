@@ -1,5 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { LogIn } from 'lucide-react';
+import { GraduationCap, LogIn, ShieldCheck } from 'lucide-react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
@@ -16,15 +16,21 @@ export default function LoginPage({ status }: Props) {
         <>
             <Head title="School Login" />
 
-            <div className="relative mx-auto mt-2 w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-lg">
+            <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-lg sm:p-8">
                 <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-primary via-amber-400 to-primary" />
 
-                <div className="mb-1">
-                    <h1 className="text-xl font-semibold text-foreground">School Login</h1>
-                    <p className="text-sm text-muted-foreground">Sign in using your activated school email.</p>
+                <div className="mb-6 space-y-3">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold tracking-wide text-primary">
+                        <GraduationCap className="size-3.5" />
+                        SCHOOL PORTAL
+                    </span>
+                    <div>
+                        <h1 className="text-xl font-semibold text-foreground">Welcome back</h1>
+                        <p className="text-sm text-muted-foreground">Sign in using your activated school email.</p>
+                    </div>
                 </div>
 
-                <Form action="/login" method="post" className="mt-5 space-y-4">
+                <Form action="/login" method="post" className="space-y-4">
                     {({ errors, processing }) => (
                         <>
                             <div className="space-y-1">
@@ -40,14 +46,13 @@ export default function LoginPage({ status }: Props) {
                             </div>
 
                             <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                     <Checkbox id="remember" name="remember" />
-                                    <Label htmlFor="remember">Remember me</Label>
+                                    <Label htmlFor="remember" className="font-normal text-muted-foreground">
+                                        Remember me
+                                    </Label>
                                 </div>
-                                <Link
-                                    href="/forgot-password"
-                                    className="text-sm text-primary underline underline-offset-4"
-                                >
+                                <Link href="/forgot-password" className="text-sm text-primary underline-offset-4 hover:underline">
                                     Forgot Password?
                                 </Link>
                             </div>
@@ -60,14 +65,19 @@ export default function LoginPage({ status }: Props) {
                     )}
                 </Form>
 
-                {status && <p className="mt-4 text-center text-sm text-emerald-600 dark:text-emerald-400">{status}</p>}
+                {status && (
+                    <p className="mt-4 rounded-lg bg-emerald-500/10 px-3 py-2 text-center text-sm text-emerald-600 dark:text-emerald-400">
+                        {status}
+                    </p>
+                )}
 
-                <div className="mt-6 flex items-center justify-center gap-2 border-t border-border pt-4 text-sm">
-                    <Link href="/" className="text-primary underline underline-offset-4">
+                <div className="mt-6 flex items-center justify-center gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
+                    <Link href="/" className="text-primary underline-offset-4 hover:underline">
                         Activate using School ID
                     </Link>
-                    <span className="text-muted-foreground">|</span>
-                    <Link href="/app/admin/login" className="text-primary underline underline-offset-4">
+                    <span aria-hidden>&middot;</span>
+                    <Link href="/app/admin/login" className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline">
+                        <ShieldCheck className="size-3.5" />
                         Admin Login
                     </Link>
                 </div>

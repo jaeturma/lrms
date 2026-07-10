@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
+import AuthResourcesLayout from '@/layouts/auth/auth-resources-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 
@@ -16,7 +17,7 @@ createInertiaApp({
                 return null;
             case name === 'LoginPage':
             case name === 'AdminLoginPage':
-                return AuthLayout;
+                return AuthResourcesLayout;
             case name.startsWith('auth/'):
                 return AuthLayout;
             case name.startsWith('settings/'):
