@@ -180,42 +180,41 @@ export default function HomePage() {
 
                             <form
                                 onSubmit={handleContinue}
-                                className="mt-8 max-w-xl space-y-4 rounded-2xl border border-border bg-card p-5 shadow-lg sm:p-6"
+                                className="mt-8 w-full max-w-xl rounded-2xl border border-white/40 bg-white/30 p-5 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-white/5"
                             >
-                                <div>
-                                    <label htmlFor="school_id" className="text-sm font-medium text-foreground">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                    <label htmlFor="school_id" className="sr-only">
                                         School ID
                                     </label>
-                                    <p className="mt-0.5 text-xs text-muted-foreground">
-                                        Enter your 10-character School ID to get started.
-                                    </p>
+                                    <Input
+                                        id="school_id"
+                                        name="school_id"
+                                        value={schoolId}
+                                        onChange={(event) => updateSchoolId(event.target.value)}
+                                        placeholder="Enter School ID"
+                                        maxLength={6}
+                                        required
+                                        className="h-12 flex-1 bg-background/70 text-base"
+                                    />
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="submit"
+                                            size="lg"
+                                            disabled={loading}
+                                            className="flex-1 bg-red-900 text-white hover:bg-red-950 sm:flex-none"
+                                        >
+                                            <ArrowRight className="size-4" />
+                                            {loading ? 'Checking...' : 'Activate'}
+                                        </Button>
+                                        <Button type="button" asChild size="lg" variant="outline" className="flex-1 sm:flex-none">
+                                            <Link href="/login">
+                                                <LogIn className="size-4" />
+                                                Login
+                                            </Link>
+                                        </Button>
+                                    </div>
                                 </div>
-                                <Input
-                                    id="school_id"
-                                    name="school_id"
-                                    value={schoolId}
-                                    onChange={(event) => updateSchoolId(event.target.value)}
-                                    placeholder="e.g. SID-10001"
-                                    maxLength={10}
-                                    required
-                                />
-                                <InputError message={error} />
-                                <div className="flex flex-col gap-3 sm:flex-row">
-                                    <Button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="flex-1 bg-red-900 text-white hover:bg-red-950"
-                                    >
-                                        <ArrowRight className="size-4" />
-                                        {loading ? 'Checking...' : 'Activate'}
-                                    </Button>
-                                    <Button type="button" asChild variant="outline" className="flex-1">
-                                        <Link href="/login">
-                                            <LogIn className="size-4" />
-                                            Login
-                                        </Link>
-                                    </Button>
-                                </div>
+                                <InputError message={error} className="mt-2" />
                             </form>
                         </div>
 
