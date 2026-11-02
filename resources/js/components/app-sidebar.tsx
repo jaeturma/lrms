@@ -3,6 +3,7 @@ import {
     BookText,
     Boxes,
     ChartColumn,
+    ClipboardCheck,
     Cog,
     FlaskConical,
     LayoutGrid,
@@ -104,6 +105,12 @@ const adminNavItems: NavItem[] = [
         href: '/app/admin/distributions',
         icon: Truck,
         iconClassName: 'text-lime-600',
+    },
+    {
+        title: 'VALID-LR Monitoring',
+        href: '/app/admin/valid-lr',
+        icon: ClipboardCheck,
+        iconClassName: 'text-teal-600',
     },
     {
         title: 'Reports',

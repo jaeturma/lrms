@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file. Format follows 
 
 This is the first entry in this file — there is no prior tagged release to diff against, so `v0.8.0` documents the audited baseline state of the codebase as verified against routes, controllers, models, migrations, services, seeders, tests, and Inertia pages. See [`.ai/07-modules.md`](.ai/07-modules.md) for full per-module detail and [`.ai/08-roadmap.md`](.ai/08-roadmap.md) for forward-looking status.
 
+## [v0.9.0] - 2026-11-02
+
+### Added
+
+- **VALID-LR Monitoring module** (`/app/admin/valid-lr`, sidebar "VALID-LR Monitoring") — replaces the `VALID-LR_Monitoring_Tool.xlsx` workflow (Project VALID-LR, 2026 cycle). See [`.ai/07-modules.md`](.ai/07-modules.md) §22.
+  - Imports the tool's source workbooks, scoped to one division: `_reference_data.xlsx` (schools, LR allocations, regional titles/publishers), `LRMIS_ENCODED.xlsx` (LRMIS-encoded totals), `masterlist lte.xlsx` (SME delivery years per key stage), and the monitoring tool itself (SME Central Office/Downloaded items, TVL packages, TVL procurement status). Upload from the module page (system admins) or run `php artisan valid-lr:import {type} {path} [--division=]`.
+  - School ID lookup reproduces the tool's ES/HS, SME and TVL sheets, plus LRMS-recorded quantities and active-year enrolment when the school is registered in LRMS.
+  - Monitoring visits snapshot the reference data, then record actual counts, distributed quantities, enrolment, MOV, year received, repairs/missing/others remarks, IMs for learners with disabilities, ARAL quantities, the four Yes/No indicators, delivery status, findings and sign-off (draft/completed).
+  - Nine new tables (`valid_lr_*`); no existing table, route or permission was changed.
+- `App\Support\XlsxStreamReader` — streaming, multi-sheet .xlsx reader (built on PHP's `XMLReader`/`ZipArchive`, no new Composer dependency); reads 546k-row sheets in seconds with flat memory.
+
+### Known Issues
+
+- Elementary allocation columns in `_reference_data.xlsx` hold division-level totals (identical for every school), so the lookup labels them as such rather than as per-school allocations.
+- Very large uploads (the monitoring tool is ~46 MB) depend on the web server's request-size limits; use the artisan command if an upload is rejected.
+
 ## [v0.8.0] - 2026-07-09
 
 ### Added

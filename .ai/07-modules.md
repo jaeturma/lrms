@@ -38,6 +38,7 @@ Authorization is enforced entirely through route middleware (`role:...`) and man
 | 19 | Science & Math Equipment (SME) | 80% |
 | 20 | Other Equipment/Materials | 80% |
 | 21 | School Enrollment | 85% |
+| 22 | VALID-LR Monitoring (LR / SME / TVL validation visits) | 75% |
 
 Overall weighted average: **~85%** of a full production DepEd LRMS. Core data-entry, monitoring, and reporting workflows are functionally complete; the gaps are concentrated in physical-asset tracking extras (QR/barcode generation, alerts), bulk/PDF reporting, and a few workflow edge cases (see each module's Missing Features).
 
@@ -606,11 +607,40 @@ Overall weighted average: **~85%** of a full production DepEd LRMS. Core data-en
 
 ---
 
+## 22. VALID-LR Monitoring (LR / SME / TVL validation visits)
+
+Digital replacement for the `VALID-LR_Monitoring_Tool.xlsx` workbook (Project VALID-LR, 2026 cycle). In Excel, typing a School ID pulled per-school data from three linked workbooks into ES/HS, SME and TVL validation sheets; LRMS now imports those workbooks, shows the same lookup per school, and records the monitoring visit.
+
+**Existing Features:**
+- Streaming import (`App\Support\XlsxStreamReader`, `XMLReader`-based, no new dependency) of four workbooks via admin upload or `php artisan valid-lr:import {type} {path} [--division=]`:
+  - `reference_data` (`_reference_data.xlsx`) — schools of **one chosen division**, per-school LR allocations, regional title/publisher table (wrapped multi-line titles are joined).
+  - `lrmis_encoded` (`LRMIS_ENCODED.xlsx`) — LRs encoded in LRMIS per school/grade/subject (`Musics and Arts` normalized; SHS = Grade 11 + 12).
+  - `sme_masterlist` (`masterlist lte.xlsx`, `Sheet1`) — SME delivery years per key stage.
+  - `monitoring_tool` (the VALID-LR tool's hidden sheets) — SME Central Office / Downloaded package items, TVL package items, TVL procurement status per school.
+  - Steps 2–4 keep only schools loaded by step 1 and replace prior data.
+- School lookup page mirroring the tool's ES/HS, SME and TVL sheets; adds LRMS-recorded quantities and active-year enrolment when the BEIS ID also exists in `schools.school_id`.
+- Monitoring visit: started as a snapshot of the reference data (re-imports never alter it), then monitors record distributed/actual counts, enrolment, MOV checklist, year received, repairs/missing/others remarks, IMs for learners with disabilities, ARAL quantities, the four Yes/No indicators, delivery status (Complete/Incomplete), findings and sign-off; draft/completed status.
+
+**Missing Features:**
+- No printable/PDF output of a completed visit, and no division-wide roll-up report of visit findings yet.
+- Elementary allocations in the source are division-level totals (same value for every school), so per-school ES adequacy can't be computed from them.
+- Visits are not linked to `ResourceDistribution`/inventory ledger corrections — discrepancies are recorded, not reconciled.
+
+**Dependencies:** `School` (optional link by BEIS ID), `LearningResource`, `Enrollment`, `SchoolYear`, `GradeLevel`.
+
+**Database Tables:** `valid_lr_schools`, `valid_lr_allocations`, `valid_lr_lrmis_counts`, `valid_lr_titles`, `valid_lr_sme_items`, `valid_lr_tvl_items`, `valid_lr_tvl_programs`, `valid_lr_visits`, `valid_lr_visit_items`.
+
+**Routes:** `admin.valid-lr.index`, `admin.valid-lr.schools.show`, `admin.valid-lr.visits.store|edit|update|destroy`, `admin.valid-lr.import.store`.
+
+**Permissions:** lookup and visits — `coreMonitoringRoles` (whole admin workspace); import — `systemAdminRoles` (route + `ImportValidLrFileRequest::authorize`).
+
+---
+
 ## Cross-Cutting Observations
 
 - **No Policy classes.** All authorization is route-level `role:` middleware plus manual `abort_if($resource->school_id !== $school->id, 403)` ownership checks scattered through controllers. This works but means authorization rules aren't centrally discoverable/testable the way Policies would be.
 - **Three equipment verticals (ICT, SME, Other) are near-duplicate code** — same model shape, same controller shape, same service shape, same catalog+movement+CRUD pattern. This is consistent and well-tested, but a shared trait/base class could reduce triplication if a fourth vertical is ever added.
-- **CSV is the only bulk I/O format** across every import/export feature in the app (schools, locations, resource titles, digital LMs, all three equipment catalogs, all four reports). No Excel/PDF import or export exists anywhere.
+- **CSV is the main bulk I/O format** (schools, locations, resource titles, digital LMs, all three equipment catalogs, all four reports). Catalog imports also accept a single-sheet .xlsx via `SpreadsheetRows`, and VALID-LR imports large multi-sheet .xlsx via `XlsxStreamReader`. No PDF export exists anywhere.
 - **QR/barcode fields exist as plain text columns** on all three equipment tables but there is no image generation, printing, or scan-to-lookup capability — matches the product roadmap's "Pending: QR Labels" entry.
 - **No notification/alerting system** anywhere (low stock, warranty expiry, pending activation aging, damaged-copy thresholds) — everything is pull-based (someone has to open a page to notice a problem).
-- Test coverage is solid for the domains it covers (Dashboard, Distribution, Reports, Equipment ×3, Digital LMs, Location Management, Admin Settings, School Activation) — 207 passing feature tests observed at last run.
+- Test coverage is solid for the domains it covers (Dashboard, Distribution, Reports, Equipment ×3, Digital LMs, Location Management, Admin Settings, School Activation) — 233 passing feature tests observed at last run.

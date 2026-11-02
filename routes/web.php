@@ -26,6 +26,9 @@ use App\Http\Controllers\Admin\SchoolYearController;
 use App\Http\Controllers\Admin\SmeCatalogController;
 use App\Http\Controllers\Admin\SmeController;
 use App\Http\Controllers\Admin\SmeImportController;
+use App\Http\Controllers\Admin\ValidLrController;
+use App\Http\Controllers\Admin\ValidLrImportController;
+use App\Http\Controllers\Admin\ValidLrVisitController;
 use App\Http\Controllers\ContentPageController;
 use App\Http\Controllers\HomePageController;
 use App\Http\Controllers\PasswordResetOtpController;
@@ -94,6 +97,12 @@ Route::prefix('/app/admin')
             Route::post('/schools/{school}/manual-activate', [SchoolManagementController::class, 'manuallyActivate'])->name('admin.schools.manual-activate');
             Route::post('/schools/{school}/send-credentials', [SchoolManagementController::class, 'sendCredentials'])->name('admin.schools.send-credentials');
             Route::delete('/schools/{school}', [SchoolManagementController::class, 'destroy'])->name('admin.schools.destroy');
+            Route::get('/valid-lr', [ValidLrController::class, 'index'])->name('admin.valid-lr.index');
+            Route::get('/valid-lr/schools/{validLrSchool}', [ValidLrController::class, 'show'])->name('admin.valid-lr.schools.show');
+            Route::post('/valid-lr/schools/{validLrSchool}/visits', [ValidLrVisitController::class, 'store'])->name('admin.valid-lr.visits.store');
+            Route::get('/valid-lr/visits/{validLrVisit}/edit', [ValidLrVisitController::class, 'edit'])->name('admin.valid-lr.visits.edit');
+            Route::put('/valid-lr/visits/{validLrVisit}', [ValidLrVisitController::class, 'update'])->name('admin.valid-lr.visits.update');
+            Route::delete('/valid-lr/visits/{validLrVisit}', [ValidLrVisitController::class, 'destroy'])->name('admin.valid-lr.visits.destroy');
         });
 
         Route::middleware('role:'.$catalogRoles)->group(function (): void {
@@ -163,6 +172,7 @@ Route::prefix('/app/admin')
             Route::get('/distributions', [DistributionController::class, 'index'])->name('admin.distributions.index');
             Route::post('/distributions', [DistributionController::class, 'store'])->name('admin.distributions.store');
             Route::post('/distributions/{distribution}/cancel', [DistributionController::class, 'cancel'])->name('admin.distributions.cancel');
+            Route::post('/valid-lr/import', [ValidLrImportController::class, 'store'])->name('admin.valid-lr.import.store');
         });
     });
 
