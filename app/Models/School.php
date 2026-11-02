@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class School extends Model
 {
@@ -33,9 +34,14 @@ class School extends Model
         'school_head',
         'librarian',
         'property_custodian',
+        'lr_designate',
+        'ict_coordinator',
+        'math_coordinator',
+        'science_coordinator',
         'primary_mobile_no',
         'secondary_mobile_no',
         'email',
+        'logo_path',
         'activation_requested_at',
         'user_id',
         'is_activated',
@@ -47,6 +53,14 @@ class School extends Model
             'is_activated' => 'boolean',
             'activation_requested_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Public URL of the school's uploaded logo, if any.
+     */
+    public function logoUrl(): ?string
+    {
+        return $this->logo_path ? Storage::disk('public')->url($this->logo_path) : null;
     }
 
     public function getRouteKeyName(): string

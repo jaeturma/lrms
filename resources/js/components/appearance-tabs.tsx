@@ -9,8 +9,14 @@ export default function AppearanceToggleTab({
     className = '',
     ...props
 }: HTMLAttributes<HTMLDivElement>) {
-    const { appearance, colorTheme, updateAppearance, updateColorTheme } =
-        useAppearance();
+    const {
+        appearance,
+        colorTheme,
+        updateAppearance,
+        updateColorTheme,
+        resetColorTheme,
+        hasCustomColorTheme,
+    } = useAppearance();
 
     const tabs: { value: Appearance; icon: LucideIcon; label: string }[] = [
         { value: 'light', icon: Sun, label: 'Light' },
@@ -75,7 +81,22 @@ export default function AppearanceToggleTab({
             </section>
 
             <section className="space-y-3">
-                <p className="text-sm font-medium">Color theme</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-medium">Color theme</p>
+                    {hasCustomColorTheme ? (
+                        <button
+                            type="button"
+                            onClick={resetColorTheme}
+                            className="text-xs text-primary hover:underline"
+                        >
+                            Use the system theme
+                        </button>
+                    ) : (
+                        <span className="text-xs text-muted-foreground">
+                            Following the system theme
+                        </span>
+                    )}
+                </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                     {themes.map((theme) => (

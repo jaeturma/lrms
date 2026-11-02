@@ -11,17 +11,23 @@ import { ChartCard } from '@/components/charts/chart-card';
 import { DivergingStackedBar } from '@/components/charts/diverging-stacked-bar';
 import { EmptyChart } from '@/components/charts/empty-chart';
 import { GroupedColumnChart } from '@/components/charts/grouped-column-chart';
+import { SchoolLogoUploader } from '@/components/school-logo-uploader';
 import { StatTile } from '@/components/stat-tile';
 
 type School = {
     id?: number;
     school_id: string;
     school_name: string;
+    logo_url?: string | null;
     district?: string | null;
     municipality?: string | null;
     barangay?: string | null;
     school_head?: string | null;
     librarian?: string | null;
+    lr_designate?: string | null;
+    ict_coordinator?: string | null;
+    math_coordinator?: string | null;
+    science_coordinator?: string | null;
     property_custodian?: string | null;
     primary_mobile_no?: string | null;
     secondary_mobile_no?: string | null;
@@ -69,6 +75,16 @@ export default function SchoolDashboard({
         { label: 'Municipality/Barangay', value: municipalityBarangay },
         { label: 'District', value: schoolData.district ?? '-' },
         { label: 'Librarian', value: schoolData.librarian ?? '-' },
+        { label: 'LR Designate', value: schoolData.lr_designate ?? '-' },
+        { label: 'ICT Coordinator', value: schoolData.ict_coordinator ?? '-' },
+        {
+            label: 'Math Coordinator',
+            value: schoolData.math_coordinator ?? '-',
+        },
+        {
+            label: 'Science Coordinator',
+            value: schoolData.science_coordinator ?? '-',
+        },
         {
             label: 'Property Custodian',
             value: schoolData.property_custodian ?? '-',
@@ -87,9 +103,13 @@ export default function SchoolDashboard({
             <div className="space-y-4 bg-background/40 p-3 md:p-4">
                 <section className="rounded-2xl border border-input bg-background p-4 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h1 className="text-xl font-bold text-foreground">
-                            {schoolData.school_name} - {schoolData.school_id}
-                        </h1>
+                        <div className="flex flex-wrap items-center gap-4">
+                            <h1 className="text-xl font-bold text-foreground">
+                                {schoolData.school_name} -{' '}
+                                {schoolData.school_id}
+                            </h1>
+                            <SchoolLogoUploader logoUrl={schoolData.logo_url} />
+                        </div>
                         {activeSchoolYear && (
                             <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-foreground">
                                 <CalendarRange className="size-3.5 text-muted-foreground" />

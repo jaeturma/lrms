@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Rules\ValidRecaptcha;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +24,8 @@ class AdminAuthController extends Controller
             'email' => ['required', 'email', 'max:50'],
             'password' => ['required', 'string', 'max:30'],
             'remember' => ['nullable', 'boolean'],
-        ]);
+            'g-recaptcha-response' => ValidRecaptcha::rules(),
+        ], ['g-recaptcha-response.required' => 'Please confirm you are not a robot.']);
 
         $attempted = Auth::attempt([
             'email' => $credentials['email'],

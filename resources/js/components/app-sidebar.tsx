@@ -288,6 +288,12 @@ export function AppSidebar() {
             icon: Users,
             iconClassName: 'text-cyan-600',
         },
+        {
+            title: 'VALID-LR Self-Assessment',
+            href: '/school/valid-lr',
+            icon: ClipboardCheck,
+            iconClassName: 'text-teal-600',
+        },
         ...(updateSchoolHref ? [updateSchoolDetailsItem] : []),
     ];
 

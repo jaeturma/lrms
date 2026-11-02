@@ -1,42 +1,48 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowLeft, ClipboardCheck, Save, Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
+import {
+    ArrowLeft,
+    CheckCircle2,
+    CircleAlert,
+    ClipboardCheck,
+    Lock,
+    Printer,
+    Save,
+    Trash2,
+} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
+import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LrmisAdjustPanel } from '@/components/valid-lr/lrmis-adjust-panel';
+import type {
+    Checklist,
+    VisitItem,
+    VisitStage,
+} from '@/components/valid-lr/visit-sections';
+import {
+    AralTable,
+    changedItems,
+    EquipmentTable,
+    Field,
+    fieldClass,
+    LearnersWithDisabilitiesTable,
+    LearningResourceTable,
+    PersonnelList,
+    stageTone,
+    textareaClass,
+} from '@/components/valid-lr/visit-sections';
 import { cn } from '@/lib/utils';
-
-type VisitItem = {
-    id: number;
-    section: 'lr' | 'sme_co' | 'sme_dl' | 'tvl' | 'im_lwd' | 'aral';
-    group_label: string | null;
-    label: string;
-    title: string | null;
-    publisher: string | null;
-    unit: string | null;
-    procurement_source: string | null;
-    reference_quantity: number | null;
-    lrmis_quantity: number | null;
-    lrms_quantity: number | null;
-    distributed_quantity: number | null;
-    actual_quantity: number | null;
-    enrolment: number | null;
-    year_received: string | null;
-    mov: string[];
-    extra: Record<string, string | number | null>;
-    remarks_repairs: string | null;
-    remarks_missing: string | null;
-    remarks_others: string | null;
-};
 
 type Indicator = { answer: 'yes' | 'no' | null; remarks: string | null };
 
 type Visit = {
     id: number;
     status: 'draft' | 'completed';
+    stage: VisitStage;
     visited_at: string | null;
+    scheduled_at: string | null;
     monitoring_team: string | null;
     school_representative: string | null;
     indicators: Record<string, Indicator>;
@@ -50,6 +56,15 @@ type Visit = {
     prepared_by: string | null;
     acknowledged_by: string | null;
     monitor: string | null;
+    team_leader: { id: number; name: string } | null;
+    school_submitted_at: string | null;
+    school_submitted_by: string | null;
+    override_reason: string | null;
+    overridden_by: string | null;
+    overridden_at: string | null;
+    validation_started_at: string | null;
+    updated_at: string | null;
+    personnel: Record<string, string | null>;
     items: VisitItem[];
 };
 
@@ -63,10 +78,25 @@ type Props = {
         district: string | null;
         curricular_offering: string | null;
     };
+    checklist: Checklist;
+    liveSchoolCounts: Record<number, number | null>;
+    liveStage: {
+        stage: VisitStage;
+        school_submitted_at: string | null;
+        school_submitted_by: string | null;
+    };
+    canEdit: boolean;
+    canSchedule: boolean;
+    canOverride: boolean;
+    canDelete: boolean;
+    canAdjustLrmis: boolean;
+    teamLeaders: Array<{ id: number; name: string; role: string }>;
     indicatorQuestions: Record<string, string>;
     movOptions: string[];
     aralPrograms: Record<string, string>;
     deliveryStatuses: string[];
+    personnelLabels: Record<string, string>;
+    stages: Record<VisitStage, string>;
 };
 
 type Tab =
@@ -79,48 +109,106 @@ type Tab =
     | 'aral'
     | 'findings';
 
-const fieldClass =
-    'h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground';
-
-const textareaClass =
-    'min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground';
-
-const toNumber = (value: string): number | null =>
-    value === '' ? null : Math.max(0, Math.floor(Number(value)));
-
 export default function AdminValidLrVisit({
     visit,
     school,
+    checklist,
+    liveSchoolCounts,
+    liveStage,
+    canEdit,
+    canSchedule,
+    canOverride,
+    canDelete,
+    canAdjustLrmis,
+    teamLeaders,
     indicatorQuestions,
     movOptions,
     aralPrograms,
     deliveryStatuses,
+    personnelLabels,
+    stages,
 }: Props) {
     const [tab, setTab] = useState<Tab>('profile');
+    const stage = liveStage?.stage ?? visit.stage;
+    const awaitingSchool = stage === 'awaiting_school';
+    const editable = canEdit && !awaitingSchool;
+    const savedItems = useRef<VisitItem[]>(visit.items);
 
-    const { data, setData, put, transform, processing, errors, isDirty } =
-        useForm({
-            status: visit.status,
-            visited_at: visit.visited_at ?? '',
-            monitoring_team: visit.monitoring_team ?? '',
-            school_representative: visit.school_representative ?? '',
-            indicators: Object.fromEntries(
-                Object.keys(indicatorQuestions).map((key) => [
-                    key,
-                    visit.indicators[key] ?? { answer: null, remarks: null },
-                ]),
-            ) as Record<string, Indicator>,
-            lr_delivery_status: visit.lr_delivery_status ?? '',
-            sme_delivery_status: visit.sme_delivery_status ?? '',
-            tvl_delivery_status: visit.tvl_delivery_status ?? '',
-            key_findings: visit.key_findings ?? '',
-            recommended_actions: visit.recommended_actions ?? '',
-            issues_concerns: visit.issues_concerns ?? '',
-            actions_taken: visit.actions_taken ?? '',
-            prepared_by: visit.prepared_by ?? '',
-            acknowledged_by: visit.acknowledged_by ?? '',
-            items: visit.items,
+    // Keep the school's counts and submission status current while the team
+    // works, without reloading the whole visit.
+    usePoll(
+        20000,
+        { only: ['liveSchoolCounts', 'liveStage', 'checklist'] },
+        { autoStart: visit.status !== 'completed' },
+    );
+
+    const {
+        data,
+        setData,
+        setDefaults,
+        put,
+        transform,
+        processing,
+        errors,
+        isDirty,
+    } = useForm({
+        status: visit.status,
+        visited_at: visit.visited_at ?? '',
+        monitoring_team: visit.monitoring_team ?? '',
+        school_representative: visit.school_representative ?? '',
+        indicators: Object.fromEntries(
+            Object.keys(indicatorQuestions).map((key) => [
+                key,
+                visit.indicators[key] ?? { answer: null, remarks: null },
+            ]),
+        ) as Record<string, Indicator>,
+        lr_delivery_status: visit.lr_delivery_status ?? '',
+        sme_delivery_status: visit.sme_delivery_status ?? '',
+        tvl_delivery_status: visit.tvl_delivery_status ?? '',
+        key_findings: visit.key_findings ?? '',
+        recommended_actions: visit.recommended_actions ?? '',
+        issues_concerns: visit.issues_concerns ?? '',
+        actions_taken: visit.actions_taken ?? '',
+        prepared_by: visit.prepared_by ?? '',
+        acknowledged_by: visit.acknowledged_by ?? '',
+        items: visit.items,
+    });
+
+    // Keep monitors from losing counts: ask before leaving with unsaved
+    // changes, whether by an in-app link or by closing the tab.
+    useEffect(() => {
+        if (!isDirty || !editable) {
+            return;
+        }
+
+        const warning =
+            'This monitoring visit has unsaved changes. Leave without saving?';
+
+        const removeRouterGuard = router.on('before', (event) => {
+            if (event.detail.visit.method !== 'get') {
+                return;
+            }
+
+            if (event.detail.visit.only.length > 0) {
+                return;
+            }
+
+            if (!window.confirm(warning)) {
+                event.preventDefault();
+            }
         });
+
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            removeRouterGuard();
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [isDirty, editable]);
 
     const sectionCounts = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -161,27 +249,59 @@ export default function AdminValidLrVisit({
             ...payload,
             status: status ?? payload.status,
             visited_at: payload.visited_at || null,
-            items: payload.items.map((item) => ({
-                id: item.id,
-                reference_quantity: item.reference_quantity,
-                distributed_quantity: item.distributed_quantity,
-                actual_quantity: item.actual_quantity,
-                enrolment: item.enrolment,
-                year_received: item.year_received,
-                mov: item.mov,
-                remarks_repairs: item.remarks_repairs,
-                remarks_missing: item.remarks_missing,
-                remarks_others: item.remarks_others,
-                ...(item.section === 'aral' ? { extra: item.extra } : {}),
-            })),
+            items: changedItems(payload.items, savedItems.current).map(
+                (item) => ({
+                    id: item.id,
+                    reference_quantity: item.reference_quantity,
+                    distributed_quantity: item.distributed_quantity,
+                    actual_quantity: item.actual_quantity,
+                    enrolment: item.enrolment,
+                    year_received: item.year_received,
+                    mov: item.mov,
+                    remarks_repairs: item.remarks_repairs,
+                    remarks_missing: item.remarks_missing,
+                    remarks_others: item.remarks_others,
+                    ...(item.section === 'aral' ? { extra: item.extra } : {}),
+                }),
+            ),
         }));
 
         put(`/app/admin/valid-lr/visits/${visit.id}`, {
             preserveScroll: true,
-            onSuccess: () => toast.success('Monitoring visit saved.'),
-            onError: () =>
-                toast.error('Some fields are invalid. Please review them.'),
+            onSuccess: () => {
+                savedItems.current = data.items;
+                setDefaults();
+                toast.success(
+                    status === 'completed'
+                        ? 'Monitoring visit completed and saved.'
+                        : 'Monitoring visit saved.',
+                );
+            },
+            onError: (validationErrors) => {
+                if (status === 'completed') {
+                    setData('status', visit.status);
+                }
+
+                toast.error(
+                    Object.values(validationErrors)[0] ??
+                        'Some fields are invalid. Please review them.',
+                );
+            },
         });
+    };
+
+    const printVisit = () => {
+        if (
+            isDirty &&
+            editable &&
+            !window.confirm(
+                'The printout shows the last saved version. Print without your unsaved changes?',
+            )
+        ) {
+            return;
+        }
+
+        window.open(`/app/admin/valid-lr/visits/${visit.id}/print`, '_blank');
     };
 
     const deleteVisit = () => {
@@ -218,6 +338,22 @@ export default function AdminValidLrVisit({
     const itemsFor = (section: VisitItem['section']) =>
         data.items.filter((item) => item.section === section);
 
+    // LRMIS counts can be corrected separately; show the latest saved values.
+    const savedById = new Map(visit.items.map((item) => [item.id, item]));
+    const learningResourceItems = itemsFor('lr').map((item) => {
+        const saved = savedById.get(item.id);
+
+        return saved
+            ? {
+                  ...item,
+                  lrmis_quantity: saved.lrmis_quantity,
+                  lrmis_original_quantity: saved.lrmis_original_quantity,
+                  lrmis_adjusted_by: saved.lrmis_adjusted_by,
+                  lrmis_adjusted_at: saved.lrmis_adjusted_at,
+              }
+            : item;
+    });
+
     return (
         <>
             <Head title={`VALID-LR Visit · ${school.school_name}`} />
@@ -233,9 +369,9 @@ export default function AdminValidLrVisit({
                             school.region,
                             school.division,
                             school.curricular_offering,
-                            visit.status === 'completed'
-                                ? 'Completed'
-                                : 'Draft',
+                            visit.team_leader
+                                ? `Team leader: ${visit.team_leader.name}`
+                                : 'No team leader assigned',
                         ]
                             .filter(Boolean)
                             .join(' · ')}
@@ -252,36 +388,92 @@ export default function AdminValidLrVisit({
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={deleteVisit}
+                                    onClick={printVisit}
                                 >
-                                    <Trash2 className="mr-1 h-4 w-4" />
-                                    Delete
+                                    <Printer className="mr-1 h-4 w-4" />
+                                    Print
                                 </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    disabled={processing}
-                                    onClick={() => save('draft')}
-                                >
-                                    <Save className="mr-1 h-4 w-4" />
-                                    Save Draft
-                                </Button>
-                                <Button
-                                    type="button"
-                                    disabled={processing}
-                                    onClick={() => save('completed')}
-                                >
-                                    Mark Completed
-                                </Button>
+                                {canDelete && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={deleteVisit}
+                                    >
+                                        <Trash2 className="mr-1 h-4 w-4" />
+                                        Delete
+                                    </Button>
+                                )}
+                                {editable && (
+                                    <>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            disabled={processing}
+                                            onClick={() => save('draft')}
+                                        >
+                                            <Save className="mr-1 h-4 w-4" />
+                                            Save Draft
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            disabled={processing}
+                                            onClick={() => save('completed')}
+                                        >
+                                            Mark Completed
+                                        </Button>
+                                    </>
+                                )}
                             </>
                         }
                     >
-                        {isDirty && (
-                            <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                                You have unsaved changes.
-                            </p>
-                        )}
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                            <StatusBadge tone={stageTone[stage]}>
+                                {stages[stage]}
+                            </StatusBadge>
+                            {!canEdit && (
+                                <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                    <Lock className="h-3.5 w-3.5" />
+                                    View only — the assigned team leader and
+                                    system admins can edit this visit.
+                                </span>
+                            )}
+                            {editable && isDirty && (
+                                <span className="font-medium text-amber-600 dark:text-amber-400">
+                                    You have unsaved changes.
+                                </span>
+                            )}
+                            {editable && !isDirty && visit.updated_at && (
+                                <span className="text-muted-foreground">
+                                    All changes saved · last saved{' '}
+                                    {visit.updated_at}
+                                </span>
+                            )}
+                        </div>
                     </PageHeader>
+
+                    <PreparationPanel
+                        visitId={visit.id}
+                        stage={stage}
+                        checklist={checklist}
+                        submittedAt={
+                            liveStage?.school_submitted_at ??
+                            visit.school_submitted_at
+                        }
+                        submittedBy={
+                            liveStage?.school_submitted_by ??
+                            visit.school_submitted_by
+                        }
+                        overrideReason={visit.override_reason}
+                        overriddenBy={visit.overridden_by}
+                        canOverride={canOverride}
+                    />
+
+                    {canSchedule && visit.status !== 'completed' && (
+                        <AssignmentCard
+                            visit={visit}
+                            teamLeaders={teamLeaders}
+                        />
+                    )}
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <div
@@ -309,157 +501,293 @@ export default function AdminValidLrVisit({
                             ))}
                         </div>
 
-                        {tab === 'profile' && (
-                            <div className="space-y-5">
-                                <div className="grid gap-3 md:grid-cols-3">
-                                    <Field
-                                        label="Date and Time"
-                                        error={errors.visited_at}
-                                    >
-                                        <Input
-                                            type="datetime-local"
-                                            value={data.visited_at}
-                                            onChange={(event) =>
-                                                setData(
-                                                    'visited_at',
-                                                    event.target.value,
-                                                )
-                                            }
-                                        />
-                                    </Field>
-                                    <Field
-                                        label="Monitoring Team"
-                                        error={errors.monitoring_team}
-                                    >
-                                        <Input
-                                            value={data.monitoring_team}
-                                            onChange={(event) =>
-                                                setData(
-                                                    'monitoring_team',
-                                                    event.target.value,
-                                                )
-                                            }
-                                        />
-                                    </Field>
-                                    <Field
-                                        label="Name of School Representative"
-                                        error={errors.school_representative}
-                                    >
-                                        <Input
-                                            value={data.school_representative}
-                                            onChange={(event) =>
-                                                setData(
-                                                    'school_representative',
-                                                    event.target.value,
-                                                )
-                                            }
-                                        />
-                                    </Field>
-                                </div>
+                        {tab === 'lr' && canAdjustLrmis && (
+                            <LrmisAdjustPanel
+                                key={visit.updated_at ?? 'lrmis'}
+                                visitId={visit.id}
+                                items={visit.items.filter(
+                                    (item) => item.section === 'lr',
+                                )}
+                            />
+                        )}
 
-                                <div className="overflow-x-auto rounded-xl border border-border">
-                                    <table className="min-w-full text-sm">
-                                        <thead className="bg-muted text-left text-foreground">
-                                            <tr>
-                                                <th className="px-3 py-2">
-                                                    Indicator
-                                                </th>
-                                                <th className="px-3 py-2">
-                                                    Yes
-                                                </th>
-                                                <th className="px-3 py-2">
-                                                    No
-                                                </th>
-                                                <th className="px-3 py-2">
-                                                    Remarks
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {Object.entries(
-                                                indicatorQuestions,
-                                            ).map(([key, question]) => (
-                                                <tr
-                                                    key={key}
-                                                    className="border-t border-border"
-                                                >
-                                                    <td className="px-3 py-2 text-foreground">
-                                                        {question}
-                                                    </td>
-                                                    {(
-                                                        ['yes', 'no'] as const
-                                                    ).map((answer) => (
-                                                        <td
-                                                            key={answer}
-                                                            className="px-3 py-2"
-                                                        >
+                        <fieldset disabled={!editable} className="min-w-0">
+                            {tab === 'profile' && (
+                                <div className="space-y-5">
+                                    <div className="grid gap-3 md:grid-cols-3">
+                                        <Field
+                                            label="Date and Time"
+                                            error={errors.visited_at}
+                                        >
+                                            <Input
+                                                type="datetime-local"
+                                                value={data.visited_at}
+                                                onChange={(event) =>
+                                                    setData(
+                                                        'visited_at',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            />
+                                        </Field>
+                                        <Field
+                                            label="Monitoring Team"
+                                            error={errors.monitoring_team}
+                                        >
+                                            <Input
+                                                value={data.monitoring_team}
+                                                onChange={(event) =>
+                                                    setData(
+                                                        'monitoring_team',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            />
+                                        </Field>
+                                        <Field
+                                            label="Name of School Representative"
+                                            error={errors.school_representative}
+                                        >
+                                            <Input
+                                                value={
+                                                    data.school_representative
+                                                }
+                                                onChange={(event) =>
+                                                    setData(
+                                                        'school_representative',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            />
+                                        </Field>
+                                    </div>
+
+                                    <div className="rounded-xl border border-border p-4">
+                                        <h3 className="mb-2 text-sm font-semibold text-foreground">
+                                            School Personnel
+                                        </h3>
+                                        <PersonnelList
+                                            personnel={visit.personnel}
+                                            labels={personnelLabels}
+                                        />
+                                    </div>
+
+                                    <div className="overflow-x-auto rounded-xl border border-border">
+                                        <table className="min-w-full text-sm">
+                                            <thead className="bg-muted text-left text-foreground">
+                                                <tr>
+                                                    <th className="px-3 py-2">
+                                                        Indicator
+                                                    </th>
+                                                    <th className="px-3 py-2">
+                                                        Yes
+                                                    </th>
+                                                    <th className="px-3 py-2">
+                                                        No
+                                                    </th>
+                                                    <th className="px-3 py-2">
+                                                        Remarks
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {Object.entries(
+                                                    indicatorQuestions,
+                                                ).map(([key, question]) => (
+                                                    <tr
+                                                        key={key}
+                                                        className="border-t border-border"
+                                                    >
+                                                        <td className="px-3 py-2 text-foreground">
+                                                            {question}
+                                                        </td>
+                                                        {(
+                                                            [
+                                                                'yes',
+                                                                'no',
+                                                            ] as const
+                                                        ).map((answer) => (
+                                                            <td
+                                                                key={answer}
+                                                                className="px-3 py-2"
+                                                            >
+                                                                <input
+                                                                    type="radio"
+                                                                    name={`indicator-${key}`}
+                                                                    aria-label={`${question} ${answer}`}
+                                                                    checked={
+                                                                        data
+                                                                            .indicators[
+                                                                            key
+                                                                        ]
+                                                                            ?.answer ===
+                                                                        answer
+                                                                    }
+                                                                    onChange={() =>
+                                                                        updateIndicator(
+                                                                            key,
+                                                                            {
+                                                                                answer,
+                                                                            },
+                                                                        )
+                                                                    }
+                                                                />
+                                                            </td>
+                                                        ))}
+                                                        <td className="px-3 py-2">
                                                             <input
-                                                                type="radio"
-                                                                name={`indicator-${key}`}
-                                                                aria-label={`${question} ${answer}`}
-                                                                checked={
+                                                                className={
+                                                                    fieldClass
+                                                                }
+                                                                aria-label={`${question} remarks`}
+                                                                value={
                                                                     data
                                                                         .indicators[
                                                                         key
                                                                     ]
-                                                                        ?.answer ===
-                                                                    answer
+                                                                        ?.remarks ??
+                                                                    ''
                                                                 }
-                                                                onChange={() =>
+                                                                onChange={(
+                                                                    event,
+                                                                ) =>
                                                                     updateIndicator(
                                                                         key,
                                                                         {
-                                                                            answer,
+                                                                            remarks:
+                                                                                event
+                                                                                    .target
+                                                                                    .value,
                                                                         },
                                                                     )
                                                                 }
                                                             />
                                                         </td>
-                                                    ))}
-                                                    <td className="px-3 py-2">
-                                                        <input
-                                                            className={
-                                                                fieldClass
-                                                            }
-                                                            aria-label={`${question} remarks`}
-                                                            value={
-                                                                data.indicators[
-                                                                    key
-                                                                ]?.remarks ?? ''
-                                                            }
-                                                            onChange={(event) =>
-                                                                updateIndicator(
-                                                                    key,
-                                                                    {
-                                                                        remarks:
-                                                                            event
-                                                                                .target
-                                                                                .value,
-                                                                    },
-                                                                )
-                                                            }
-                                                        />
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
 
-                                <div className="grid gap-3 md:grid-cols-3">
+                                    <div className="grid gap-3 md:grid-cols-3">
+                                        {(
+                                            [
+                                                [
+                                                    'lr_delivery_status',
+                                                    'LR delivery status',
+                                                ],
+                                                [
+                                                    'sme_delivery_status',
+                                                    'SME delivery status',
+                                                ],
+                                                [
+                                                    'tvl_delivery_status',
+                                                    'TVL delivery status',
+                                                ],
+                                            ] as const
+                                        ).map(([field, label]) => (
+                                            <Field
+                                                key={field}
+                                                label={label}
+                                                error={errors[field]}
+                                            >
+                                                <select
+                                                    className={cn(
+                                                        fieldClass,
+                                                        'h-9',
+                                                    )}
+                                                    value={data[field]}
+                                                    onChange={(event) =>
+                                                        setData(
+                                                            field,
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                >
+                                                    <option value="">
+                                                        Not assessed
+                                                    </option>
+                                                    {deliveryStatuses.map(
+                                                        (status) => (
+                                                            <option
+                                                                key={status}
+                                                                value={status}
+                                                            >
+                                                                {status}
+                                                            </option>
+                                                        ),
+                                                    )}
+                                                </select>
+                                            </Field>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {tab === 'lr' && (
+                                <LearningResourceTable
+                                    items={learningResourceItems}
+                                    movOptions={movOptions}
+                                    mode="team"
+                                    schoolCounts={liveSchoolCounts}
+                                    onChange={updateItem}
+                                />
+                            )}
+
+                            {(tab === 'sme_co' ||
+                                tab === 'sme_dl' ||
+                                tab === 'tvl') && (
+                                <EquipmentTable
+                                    items={itemsFor(tab)}
+                                    groupHeading={
+                                        tab === 'tvl'
+                                            ? 'Program / Specialization'
+                                            : tab === 'sme_co'
+                                              ? 'Lot Description'
+                                              : 'Learning Area'
+                                    }
+                                    isTvl={tab === 'tvl'}
+                                    mode="team"
+                                    schoolCounts={liveSchoolCounts}
+                                    onChange={updateItem}
+                                />
+                            )}
+
+                            {tab === 'im_lwd' && (
+                                <LearnersWithDisabilitiesTable
+                                    items={itemsFor('im_lwd')}
+                                    mode="team"
+                                    onChange={updateItem}
+                                />
+                            )}
+
+                            {tab === 'aral' && (
+                                <AralTable
+                                    items={itemsFor('aral')}
+                                    aralPrograms={aralPrograms}
+                                    onChange={updateItem}
+                                />
+                            )}
+
+                            {tab === 'findings' && (
+                                <div className="grid gap-3 md:grid-cols-2">
                                     {(
                                         [
                                             [
-                                                'lr_delivery_status',
-                                                'LR delivery status',
+                                                'key_findings',
+                                                'Immediate concerns / issues',
                                             ],
                                             [
-                                                'sme_delivery_status',
-                                                'SME delivery status',
+                                                'recommended_actions',
+                                                'Recommended actions',
                                             ],
                                             [
-                                                'tvl_delivery_status',
-                                                'TVL delivery status',
+                                                'issues_concerns',
+                                                'ARAL issues and concerns (delivery, quantity, quality, utilization)',
+                                            ],
+                                            [
+                                                'actions_taken',
+                                                'ARAL actions taken or needed',
                                             ],
                                         ] as const
                                     ).map(([field, label]) => (
@@ -468,11 +796,8 @@ export default function AdminValidLrVisit({
                                             label={label}
                                             error={errors[field]}
                                         >
-                                            <select
-                                                className={cn(
-                                                    fieldClass,
-                                                    'h-9',
-                                                )}
+                                            <textarea
+                                                className={textareaClass}
                                                 value={data[field]}
                                                 onChange={(event) =>
                                                     setData(
@@ -480,280 +805,40 @@ export default function AdminValidLrVisit({
                                                         event.target.value,
                                                     )
                                                 }
-                                            >
-                                                <option value="">
-                                                    Not assessed
-                                                </option>
-                                                {deliveryStatuses.map(
-                                                    (status) => (
-                                                        <option
-                                                            key={status}
-                                                            value={status}
-                                                        >
-                                                            {status}
-                                                        </option>
-                                                    ),
-                                                )}
-                                            </select>
+                                            />
                                         </Field>
                                     ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {tab === 'lr' && (
-                            <LearningResourceTable
-                                items={itemsFor('lr')}
-                                movOptions={movOptions}
-                                onChange={updateItem}
-                            />
-                        )}
-
-                        {(tab === 'sme_co' ||
-                            tab === 'sme_dl' ||
-                            tab === 'tvl') && (
-                            <EquipmentTable
-                                items={itemsFor(tab)}
-                                groupHeading={
-                                    tab === 'tvl'
-                                        ? 'Program / Specialization'
-                                        : tab === 'sme_co'
-                                          ? 'Lot Description'
-                                          : 'Learning Area'
-                                }
-                                isTvl={tab === 'tvl'}
-                                onChange={updateItem}
-                            />
-                        )}
-
-                        {tab === 'im_lwd' && (
-                            <div className="overflow-x-auto rounded-xl border border-border">
-                                <table className="min-w-full text-sm">
-                                    <thead className="bg-muted text-left text-foreground">
-                                        <tr>
-                                            <th className="px-3 py-2">
-                                                Learning Resource
-                                            </th>
-                                            <th className="px-3 py-2">
-                                                Allocated Quantity
-                                            </th>
-                                            <th className="px-3 py-2">
-                                                Delivered Quantity
-                                            </th>
-                                            <th className="px-3 py-2">
-                                                Remarks (usability, access,
-                                                storage, loss and damage)
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {itemsFor('im_lwd').map((item) => (
-                                            <tr
-                                                key={item.id}
-                                                className="border-t border-border"
-                                            >
-                                                <td className="px-3 py-1.5 text-foreground">
-                                                    {item.label}
-                                                </td>
-                                                <td className="w-32 px-3 py-1.5">
-                                                    <QuantityInput
-                                                        label={`${item.label} allocated`}
-                                                        value={
-                                                            item.reference_quantity
-                                                        }
-                                                        onChange={(value) =>
-                                                            updateItem(
-                                                                item.id,
-                                                                'reference_quantity',
-                                                                value,
-                                                            )
-                                                        }
-                                                    />
-                                                </td>
-                                                <td className="w-32 px-3 py-1.5">
-                                                    <QuantityInput
-                                                        label={`${item.label} delivered`}
-                                                        value={
-                                                            item.actual_quantity
-                                                        }
-                                                        onChange={(value) =>
-                                                            updateItem(
-                                                                item.id,
-                                                                'actual_quantity',
-                                                                value,
-                                                            )
-                                                        }
-                                                    />
-                                                </td>
-                                                <td className="px-3 py-1.5">
-                                                    <input
-                                                        className={fieldClass}
-                                                        aria-label={`${item.label} remarks`}
-                                                        value={
-                                                            item.remarks_others ??
-                                                            ''
-                                                        }
-                                                        onChange={(event) =>
-                                                            updateItem(
-                                                                item.id,
-                                                                'remarks_others',
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                    />
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        {tab === 'aral' && (
-                            <div className="overflow-x-auto rounded-xl border border-border">
-                                <table className="min-w-full text-sm">
-                                    <thead className="bg-muted text-left text-foreground">
-                                        <tr>
-                                            <th className="px-3 py-2">
-                                                Indicator
-                                            </th>
-                                            <th className="px-3 py-2">
-                                                ARAL Learning Resource
-                                            </th>
-                                            {Object.values(aralPrograms).map(
-                                                (program) => (
-                                                    <th
-                                                        key={program}
-                                                        className="px-3 py-2"
-                                                    >
-                                                        {program}
-                                                    </th>
-                                                ),
-                                            )}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {itemsFor('aral').map((item) => (
-                                            <tr
-                                                key={item.id}
-                                                className="border-t border-border"
-                                            >
-                                                <td className="px-3 py-1.5 text-muted-foreground">
-                                                    {item.group_label}
-                                                </td>
-                                                <td className="px-3 py-1.5 text-foreground">
-                                                    {item.label}
-                                                </td>
-                                                {Object.keys(aralPrograms).map(
-                                                    (programKey) => (
-                                                        <td
-                                                            key={programKey}
-                                                            className="w-36 px-3 py-1.5"
-                                                        >
-                                                            <QuantityInput
-                                                                label={`${item.group_label} ${item.label} ${aralPrograms[programKey]}`}
-                                                                value={
-                                                                    (item.extra[
-                                                                        programKey
-                                                                    ] as
-                                                                        | number
-                                                                        | null) ??
-                                                                    null
-                                                                }
-                                                                onChange={(
-                                                                    value,
-                                                                ) =>
-                                                                    updateItem(
-                                                                        item.id,
-                                                                        'extra',
-                                                                        {
-                                                                            ...item.extra,
-                                                                            [programKey]:
-                                                                                value,
-                                                                        },
-                                                                    )
-                                                                }
-                                                            />
-                                                        </td>
-                                                    ),
-                                                )}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        {tab === 'findings' && (
-                            <div className="grid gap-3 md:grid-cols-2">
-                                {(
-                                    [
-                                        [
-                                            'key_findings',
-                                            'Immediate concerns / issues',
-                                        ],
-                                        [
-                                            'recommended_actions',
-                                            'Recommended actions',
-                                        ],
-                                        [
-                                            'issues_concerns',
-                                            'ARAL issues and concerns (delivery, quantity, quality, utilization)',
-                                        ],
-                                        [
-                                            'actions_taken',
-                                            'ARAL actions taken or needed',
-                                        ],
-                                    ] as const
-                                ).map(([field, label]) => (
                                     <Field
-                                        key={field}
-                                        label={label}
-                                        error={errors[field]}
+                                        label="Prepared by (name)"
+                                        error={errors.prepared_by}
                                     >
-                                        <textarea
-                                            className={textareaClass}
-                                            value={data[field]}
+                                        <Input
+                                            value={data.prepared_by}
                                             onChange={(event) =>
                                                 setData(
-                                                    field,
+                                                    'prepared_by',
                                                     event.target.value,
                                                 )
                                             }
                                         />
                                     </Field>
-                                ))}
-                                <Field
-                                    label="Prepared by (name)"
-                                    error={errors.prepared_by}
-                                >
-                                    <Input
-                                        value={data.prepared_by}
-                                        onChange={(event) =>
-                                            setData(
-                                                'prepared_by',
-                                                event.target.value,
-                                            )
-                                        }
-                                    />
-                                </Field>
-                                <Field
-                                    label="Acknowledged by (School/SDO representative)"
-                                    error={errors.acknowledged_by}
-                                >
-                                    <Input
-                                        value={data.acknowledged_by}
-                                        onChange={(event) =>
-                                            setData(
-                                                'acknowledged_by',
-                                                event.target.value,
-                                            )
-                                        }
-                                    />
-                                </Field>
-                            </div>
-                        )}
+                                    <Field
+                                        label="Acknowledged by (School/SDO representative)"
+                                        error={errors.acknowledged_by}
+                                    >
+                                        <Input
+                                            value={data.acknowledged_by}
+                                            onChange={(event) =>
+                                                setData(
+                                                    'acknowledged_by',
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                    </Field>
+                                </div>
+                            )}
+                        </fieldset>
                     </section>
                 </div>
             </main>
@@ -761,336 +846,232 @@ export default function AdminValidLrVisit({
     );
 }
 
-function Field({
-    label,
-    error,
+function ChecklistRow({
+    done,
     children,
 }: {
-    label: string;
-    error?: string;
+    done: boolean;
     children: React.ReactNode;
 }) {
     return (
-        <label className="grid gap-1 text-sm">
-            <span className="font-medium text-foreground">{label}</span>
-            {children}
-            <InputError message={error} />
-        </label>
+        <li className="flex items-start gap-2">
+            {done ? (
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+            ) : (
+                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            )}
+            <span
+                className={done ? 'text-foreground' : 'text-muted-foreground'}
+            >
+                {children}
+            </span>
+        </li>
     );
 }
 
-function QuantityInput({
-    label,
-    value,
-    onChange,
+function PreparationPanel({
+    visitId,
+    stage,
+    checklist,
+    submittedAt,
+    submittedBy,
+    overrideReason,
+    overriddenBy,
+    canOverride,
 }: {
-    label: string;
-    value: number | null;
-    onChange: (value: number | null) => void;
+    visitId: number;
+    stage: VisitStage;
+    checklist: Checklist;
+    submittedAt: string | null;
+    submittedBy: string | null;
+    overrideReason: string | null;
+    overriddenBy: string | null;
+    canOverride: boolean;
 }) {
-    return (
-        <input
-            type="number"
-            min={0}
-            inputMode="numeric"
-            aria-label={label}
-            className={cn(fieldClass, 'text-right tabular-nums')}
-            value={value ?? ''}
-            onChange={(event) => onChange(toNumber(event.target.value))}
-        />
-    );
-}
+    const overrideForm = useForm({ override_reason: '' });
 
-type ItemChange = <K extends keyof VisitItem>(
-    id: number,
-    field: K,
-    value: VisitItem[K],
-) => void;
-
-function LearningResourceTable({
-    items,
-    movOptions,
-    onChange,
-}: {
-    items: VisitItem[];
-    movOptions: string[];
-    onChange: ItemChange;
-}) {
-    if (items.length === 0) {
-        return (
-            <p className="text-sm text-muted-foreground">
-                No learning resource allocation was found for this school when
-                the visit started.
-            </p>
-        );
-    }
+    const submitOverride = () => {
+        overrideForm.post(`/app/admin/valid-lr/visits/${visitId}/override`, {
+            preserveScroll: true,
+            onSuccess: () =>
+                toast.success('Validation can now proceed for this school.'),
+        });
+    };
 
     return (
-        <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="min-w-full text-sm">
-                <thead className="bg-muted text-left align-bottom text-foreground">
-                    <tr>
-                        <th className="px-2 py-2">Grade</th>
-                        <th className="px-2 py-2">Learning Area / Title</th>
-                        <th className="px-2 py-2 text-right">
-                            Allocated (TX + TM)
-                        </th>
-                        <th className="px-2 py-2">Distributed to School</th>
-                        <th className="px-2 py-2 text-right">LRMIS Encoded</th>
-                        <th className="px-2 py-2 text-right">LRMS Recorded</th>
-                        <th className="px-2 py-2">Actual Counted</th>
-                        <th className="px-2 py-2">Enrolment SY 2026–2027</th>
-                        <th className="px-2 py-2">MOV Presented</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items.map((item) => {
-                        const mismatch =
-                            item.actual_quantity !== null &&
-                            item.lrmis_quantity !== null &&
-                            item.actual_quantity !== item.lrmis_quantity;
+        <section
+            className={cn(
+                'rounded-2xl border p-5 shadow-sm',
+                stage === 'awaiting_school'
+                    ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30'
+                    : 'border-border bg-card',
+            )}
+        >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 className="text-base font-semibold text-foreground">
+                        School Preparation
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                        {stage === 'awaiting_school'
+                            ? 'Validation opens once the school submits its profile, enrolment and counts. Counts below update automatically.'
+                            : submittedAt
+                              ? `Submitted by ${submittedBy ?? 'the school'} on ${submittedAt}. The school can still correct counts until the visit is completed.`
+                              : `Validation allowed without the school submission by ${overriddenBy ?? 'an admin'}: ${overrideReason ?? ''}`}
+                    </p>
+                </div>
+                <p className="text-sm font-medium text-foreground tabular-nums">
+                    {checklist.items_counted.toLocaleString()} /{' '}
+                    {checklist.items_total.toLocaleString()} items counted by
+                    the school
+                </p>
+            </div>
 
-                        return (
-                            <tr
-                                key={item.id}
-                                className="border-t border-border align-top"
-                            >
-                                <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">
-                                    {item.group_label}
-                                </td>
-                                <td className="min-w-56 px-2 py-1.5">
-                                    <div className="font-medium text-foreground">
-                                        {item.label}
-                                    </div>
-                                    {(item.title || item.publisher) && (
-                                        <div className="text-xs text-muted-foreground">
-                                            {[item.title, item.publisher]
-                                                .filter(Boolean)
-                                                .join(' — ')}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="px-2 py-1.5 text-right tabular-nums">
-                                    {item.reference_quantity?.toLocaleString() ??
-                                        '-'}
-                                </td>
-                                <td className="w-28 px-2 py-1.5">
-                                    <QuantityInput
-                                        label={`${item.group_label} ${item.label} distributed`}
-                                        value={item.distributed_quantity}
-                                        onChange={(value) =>
-                                            onChange(
-                                                item.id,
-                                                'distributed_quantity',
-                                                value,
-                                            )
-                                        }
-                                    />
-                                </td>
-                                <td className="px-2 py-1.5 text-right tabular-nums">
-                                    {item.lrmis_quantity?.toLocaleString() ??
-                                        '-'}
-                                </td>
-                                <td className="px-2 py-1.5 text-right tabular-nums">
-                                    {item.lrms_quantity?.toLocaleString() ??
-                                        '-'}
-                                </td>
-                                <td className="w-28 px-2 py-1.5">
-                                    <QuantityInput
-                                        label={`${item.group_label} ${item.label} actual count`}
-                                        value={item.actual_quantity}
-                                        onChange={(value) =>
-                                            onChange(
-                                                item.id,
-                                                'actual_quantity',
-                                                value,
-                                            )
-                                        }
-                                    />
-                                    {mismatch && (
-                                        <span className="text-xs text-amber-600 dark:text-amber-400">
-                                            Differs from LRMIS
-                                        </span>
-                                    )}
-                                </td>
-                                <td className="w-28 px-2 py-1.5">
-                                    <QuantityInput
-                                        label={`${item.group_label} ${item.label} enrolment`}
-                                        value={item.enrolment}
-                                        onChange={(value) =>
-                                            onChange(
-                                                item.id,
-                                                'enrolment',
-                                                value,
-                                            )
-                                        }
-                                    />
-                                </td>
-                                <td className="min-w-52 px-2 py-1.5">
-                                    <div className="grid gap-0.5">
-                                        {movOptions.map((option) => (
-                                            <label
-                                                key={option}
-                                                className="flex items-center gap-1.5 text-xs text-muted-foreground"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={item.mov.includes(
-                                                        option,
-                                                    )}
-                                                    onChange={(event) =>
-                                                        onChange(
-                                                            item.id,
-                                                            'mov',
-                                                            event.target.checked
-                                                                ? [
-                                                                      ...item.mov,
-                                                                      option,
-                                                                  ]
-                                                                : item.mov.filter(
-                                                                      (value) =>
-                                                                          value !==
-                                                                          option,
-                                                                  ),
-                                                        )
-                                                    }
-                                                />
-                                                {option}
-                                            </label>
-                                        ))}
-                                    </div>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
-    );
-}
+            <ul className="mt-3 grid gap-1.5 text-sm md:grid-cols-3">
+                <ChecklistRow done={checklist.profile_complete}>
+                    School profile
+                    {!checklist.in_lrms
+                        ? ' — school has no LRMS account'
+                        : checklist.missing_profile.length > 0
+                          ? ` — missing ${checklist.missing_profile.join(', ')}`
+                          : ' complete'}
+                </ChecklistRow>
+                <ChecklistRow done={checklist.enrolment_complete}>
+                    Enrolment
+                    {checklist.school_year
+                        ? ` for SY ${checklist.school_year}`
+                        : ''}
+                    {checklist.enrolment_complete ? ' encoded' : ' not encoded'}
+                </ChecklistRow>
+                <ChecklistRow done={checklist.counts_complete}>
+                    Counts for all LR, SME and TVL items
+                </ChecklistRow>
+            </ul>
 
-function EquipmentTable({
-    items,
-    groupHeading,
-    isTvl,
-    onChange,
-}: {
-    items: VisitItem[];
-    groupHeading: string;
-    isTvl: boolean;
-    onChange: ItemChange;
-}) {
-    if (items.length === 0) {
-        return (
-            <p className="text-sm text-muted-foreground">
-                No delivered package was on record for this school when the
-                visit started.
-            </p>
-        );
-    }
-
-    return (
-        <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="min-w-full text-sm">
-                <thead className="bg-muted text-left align-bottom text-foreground">
-                    <tr>
-                        <th className="px-2 py-2">{groupHeading}</th>
-                        <th className="px-2 py-2">Item</th>
-                        <th className="px-2 py-2">
-                            {isTvl ? 'Procured By' : 'Unit / Key Stage'}
-                        </th>
-                        <th className="px-2 py-2 text-right">
-                            {isTvl ? 'Qty per Specialization' : 'Qty'}
-                        </th>
-                        <th className="px-2 py-2">Actual Count</th>
-                        <th className="px-2 py-2">Year Received</th>
-                        <th className="px-2 py-2">Repairs</th>
-                        <th className="px-2 py-2">Missing</th>
-                        <th className="px-2 py-2">Others</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items.map((item) => (
-                        <tr
-                            key={item.id}
-                            className="border-t border-border align-top"
+            {stage === 'awaiting_school' && canOverride && (
+                <div className="mt-4 flex flex-wrap items-start gap-2 border-t border-amber-200 pt-4 dark:border-amber-900">
+                    <div className="grid min-w-72 flex-1 gap-1">
+                        <label
+                            htmlFor="override-reason"
+                            className="text-sm font-medium text-foreground"
                         >
-                            <td className="max-w-56 px-2 py-1.5 text-xs text-muted-foreground">
-                                {item.group_label ?? '-'}
-                            </td>
-                            <td className="min-w-56 px-2 py-1.5 text-foreground">
-                                {item.label}
-                            </td>
-                            <td className="px-2 py-1.5 text-xs whitespace-nowrap text-muted-foreground">
-                                {isTvl
-                                    ? item.procurement_source ===
-                                      'central_office'
-                                        ? 'Central Office'
-                                        : item.procurement_source ===
-                                            'downloaded'
-                                          ? 'RO/SDO'
-                                          : '-'
-                                    : [item.unit, item.extra.key_stage]
-                                          .filter(Boolean)
-                                          .join(' · ')}
-                            </td>
-                            <td className="px-2 py-1.5 text-right tabular-nums">
-                                {item.reference_quantity?.toLocaleString() ??
-                                    '-'}
-                            </td>
-                            <td className="w-24 px-2 py-1.5">
-                                <QuantityInput
-                                    label={`${item.label} actual count`}
-                                    value={item.actual_quantity}
-                                    onChange={(value) =>
-                                        onChange(
-                                            item.id,
-                                            'actual_quantity',
-                                            value,
-                                        )
-                                    }
-                                />
-                            </td>
-                            <td className="w-28 px-2 py-1.5">
-                                <input
-                                    className={fieldClass}
-                                    aria-label={`${item.label} year received`}
-                                    value={item.year_received ?? ''}
-                                    onChange={(event) =>
-                                        onChange(
-                                            item.id,
-                                            'year_received',
-                                            event.target.value,
-                                        )
-                                    }
-                                />
-                            </td>
-                            {(
-                                [
-                                    'remarks_repairs',
-                                    'remarks_missing',
-                                    'remarks_others',
-                                ] as const
-                            ).map((field) => (
-                                <td key={field} className="w-36 px-2 py-1.5">
-                                    <input
-                                        className={fieldClass}
-                                        aria-label={`${item.label} ${field.replace('remarks_', '')}`}
-                                        value={item[field] ?? ''}
-                                        onChange={(event) =>
-                                            onChange(
-                                                item.id,
-                                                field,
-                                                event.target.value,
-                                            )
-                                        }
-                                    />
-                                </td>
-                            ))}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
+                            Allow validation without the school submission
+                        </label>
+                        <Input
+                            id="override-reason"
+                            value={overrideForm.data.override_reason}
+                            placeholder="Reason (e.g. school has no LRMS account yet)"
+                            onChange={(event) =>
+                                overrideForm.setData(
+                                    'override_reason',
+                                    event.target.value,
+                                )
+                            }
+                        />
+                        {overrideForm.errors.override_reason && (
+                            <p className="text-sm text-red-600">
+                                {overrideForm.errors.override_reason}
+                            </p>
+                        )}
+                    </div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-6"
+                        disabled={overrideForm.processing}
+                        onClick={submitOverride}
+                    >
+                        Override
+                    </Button>
+                </div>
+            )}
+        </section>
+    );
+}
+
+function AssignmentCard({
+    visit,
+    teamLeaders,
+}: {
+    visit: Visit;
+    teamLeaders: Array<{ id: number; name: string; role: string }>;
+}) {
+    const form = useForm({
+        team_leader_id: visit.team_leader?.id
+            ? String(visit.team_leader.id)
+            : '',
+        scheduled_at: visit.scheduled_at ?? '',
+        monitoring_team: visit.monitoring_team ?? '',
+    });
+
+    const submit = () => {
+        form.transform((payload) => ({
+            team_leader_id: payload.team_leader_id
+                ? Number(payload.team_leader_id)
+                : null,
+            scheduled_at: payload.scheduled_at || null,
+            monitoring_team: payload.monitoring_team || null,
+        }));
+        form.put(`/app/admin/valid-lr/visits/${visit.id}/assignment`, {
+            preserveScroll: true,
+            onSuccess: () => toast.success('Monitoring schedule updated.'),
+        });
+    };
+
+    return (
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h2 className="mb-3 text-base font-semibold text-foreground">
+                Schedule and Team Leader
+            </h2>
+            <div className="grid items-end gap-3 md:grid-cols-[1fr_1fr_1.5fr_auto]">
+                <Field label="Team leader" error={form.errors.team_leader_id}>
+                    <select
+                        className={cn(fieldClass, 'h-9')}
+                        value={form.data.team_leader_id}
+                        onChange={(event) =>
+                            form.setData('team_leader_id', event.target.value)
+                        }
+                    >
+                        <option value="">Not assigned</option>
+                        {teamLeaders.map((leader) => (
+                            <option key={leader.id} value={leader.id}>
+                                {leader.name} ({leader.role})
+                            </option>
+                        ))}
+                    </select>
+                </Field>
+                <Field
+                    label="Scheduled monitoring"
+                    error={form.errors.scheduled_at}
+                >
+                    <Input
+                        type="datetime-local"
+                        value={form.data.scheduled_at}
+                        onChange={(event) =>
+                            form.setData('scheduled_at', event.target.value)
+                        }
+                    />
+                </Field>
+                <Field
+                    label="Monitoring team members"
+                    error={form.errors.monitoring_team}
+                >
+                    <Input
+                        value={form.data.monitoring_team}
+                        onChange={(event) =>
+                            form.setData('monitoring_team', event.target.value)
+                        }
+                    />
+                </Field>
+                <Button
+                    type="button"
+                    variant="outline"
+                    disabled={form.processing || !form.isDirty}
+                    onClick={submit}
+                >
+                    Save Schedule
+                </Button>
+            </div>
+        </section>
     );
 }

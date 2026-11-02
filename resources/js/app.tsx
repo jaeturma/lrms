@@ -1,7 +1,7 @@
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, router } from '@inertiajs/react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { initializeTheme } from '@/hooks/use-appearance';
+import { applySystemColorTheme, initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
 import AuthResourcesLayout from '@/layouts/auth/auth-resources-layout';
 import AuthLayout from '@/layouts/auth-layout';
@@ -14,6 +14,7 @@ createInertiaApp({
     layout: (name) => {
         switch (true) {
             case name === 'HomePage':
+            case name.endsWith('Print'):
                 return null;
             case name === 'LoginPage':
             case name === 'AdminLoginPage':
@@ -42,3 +43,12 @@ createInertiaApp({
 
 // This will set light / dark mode on load...
 initializeTheme();
+
+// Follow the system color theme set in App Settings (unless the user chose their own).
+router.on('navigate', (event) => {
+    const branding = event.detail.page.props.branding as
+        | { color_theme?: string }
+        | undefined;
+
+    applySystemColorTheme(branding?.color_theme);
+});

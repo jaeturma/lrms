@@ -233,6 +233,21 @@
         background-attachment: fixed;
     }
 
+    /* Public landing page: a much lighter wash of the theme color than the
+       app-wide gradient on body. */
+    .landing-surface {
+        background: linear-gradient(
+            180deg,
+            color-mix(in oklch, var(--page-background-start) 28%, white) 0%,
+            var(--background) 45%,
+            color-mix(in oklch, var(--page-background-end) 14%, white) 100%
+        );
+    }
+
+    .dark .landing-surface {
+        background: transparent;
+    }
+
     ::selection {
         background-color: color-mix(in oklch, var(--primary) 22%, transparent);
     }

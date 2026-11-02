@@ -38,7 +38,7 @@ Authorization is enforced entirely through route middleware (`role:...`) and man
 | 19 | Science & Math Equipment (SME) | 80% |
 | 20 | Other Equipment/Materials | 80% |
 | 21 | School Enrollment | 85% |
-| 22 | VALID-LR Monitoring (LR / SME / TVL validation visits) | 75% |
+| 22 | VALID-LR Monitoring (LR / SME / TVL validation visits) | 85% |
 
 Overall weighted average: **~85%** of a full production DepEd LRMS. Core data-entry, monitoring, and reporting workflows are functionally complete; the gaps are concentrated in physical-asset tracking extras (QR/barcode generation, alerts), bulk/PDF reporting, and a few workflow edge cases (see each module's Missing Features).
 
@@ -620,9 +620,16 @@ Digital replacement for the `VALID-LR_Monitoring_Tool.xlsx` workbook (Project VA
   - Steps 2–4 keep only schools loaded by step 1 and replace prior data.
 - School lookup page mirroring the tool's ES/HS, SME and TVL sheets; adds LRMS-recorded quantities and active-year enrolment when the BEIS ID also exists in `schools.school_id`.
 - Monitoring visit: started as a snapshot of the reference data (re-imports never alter it), then monitors record distributed/actual counts, enrolment, MOV checklist, year received, repairs/missing/others remarks, IMs for learners with disabilities, ARAL quantities, the four Yes/No indicators, delivery status (Complete/Incomplete), findings and sign-off; draft/completed status.
+- Completing a visit requires date/time, team, school representative and preparer; the visit page warns before leaving with unsaved changes.
+- Printable visit (`AdminValidLrVisitPrint`, A4 landscape): blank fields on a draft serve as the on-site field copy; a completed visit prints as the signed record.
+- School self-assessment (`/school/valid-lr`, `SchoolValidLrController`): the school counts every LR/SME/TVL item and submits once its profile (School Head, LR Designate, ICT/Math/Science Coordinators, Property Custodian, email) and current-SY enrolment are complete (`ValidLrPreparationService`). Counts stay editable until the visit is completed.
+- Workflow stages on `ValidLrVisit::stage()`: awaiting_school → ready (school submitted, or admin override with reason) → validating (first team save) → completed. Team saves are blocked while awaiting the school.
+- Edit rights: assigned team leader + system admins; scheduling/assigning: system admins + `manager`; delete/override: system admins. Other VALID-LR roles are read-only.
+- Live Board (`/app/admin/valid-lr/board`, `ValidLrBoardController`): per-stage counts and per-school preparation/validation progress, polling every 30 s.
+- Monitoring Report (`ValidLrReportService`): coverage by district, indicator tallies, delivery status, per-visit counted items and discrepancies; filters (status, district, date range), CSV export and print view.
 
 **Missing Features:**
-- No printable/PDF output of a completed visit, and no division-wide roll-up report of visit findings yet.
+- No server-generated PDF: printing uses the browser print dialog on the print pages (save as PDF from there). Report findings are free text and are not categorized.
 - Elementary allocations in the source are division-level totals (same value for every school), so per-school ES adequacy can't be computed from them.
 - Visits are not linked to `ResourceDistribution`/inventory ledger corrections — discrepancies are recorded, not reconciled.
 
@@ -630,9 +637,9 @@ Digital replacement for the `VALID-LR_Monitoring_Tool.xlsx` workbook (Project VA
 
 **Database Tables:** `valid_lr_schools`, `valid_lr_allocations`, `valid_lr_lrmis_counts`, `valid_lr_titles`, `valid_lr_sme_items`, `valid_lr_tvl_items`, `valid_lr_tvl_programs`, `valid_lr_visits`, `valid_lr_visit_items`.
 
-**Routes:** `admin.valid-lr.index`, `admin.valid-lr.schools.show`, `admin.valid-lr.visits.store|edit|update|destroy`, `admin.valid-lr.import.store`.
+**Routes:** `admin.valid-lr.index`, `admin.valid-lr.board`, `admin.valid-lr.schools.show`, `admin.valid-lr.visits.store|edit|update|destroy|print|assign|override`, `school.valid-lr.index|update|submit`, `admin.valid-lr.report|report.print|report.export`, `admin.valid-lr.import.store`.
 
-**Permissions:** lookup and visits — `coreMonitoringRoles` (whole admin workspace); import — `systemAdminRoles` (route + `ImportValidLrFileRequest::authorize`).
+**Permissions:** lookup, report and live board — `coreMonitoringRoles`; visit edits — assigned team leader + system admins (`ValidLrVisit::canBeEditedBy`); scheduling — system admins + `manager`; delete/override — system admins; school self-assessment — `school` role for its own BEIS ID; import — `systemAdminRoles`.
 
 ---
 
@@ -643,4 +650,4 @@ Digital replacement for the `VALID-LR_Monitoring_Tool.xlsx` workbook (Project VA
 - **CSV is the main bulk I/O format** (schools, locations, resource titles, digital LMs, all three equipment catalogs, all four reports). Catalog imports also accept a single-sheet .xlsx via `SpreadsheetRows`, and VALID-LR imports large multi-sheet .xlsx via `XlsxStreamReader`. No PDF export exists anywhere.
 - **QR/barcode fields exist as plain text columns** on all three equipment tables but there is no image generation, printing, or scan-to-lookup capability — matches the product roadmap's "Pending: QR Labels" entry.
 - **No notification/alerting system** anywhere (low stock, warranty expiry, pending activation aging, damaged-copy thresholds) — everything is pull-based (someone has to open a page to notice a problem).
-- Test coverage is solid for the domains it covers (Dashboard, Distribution, Reports, Equipment ×3, Digital LMs, Location Management, Admin Settings, School Activation) — 233 passing feature tests observed at last run.
+- Test coverage is solid for the domains it covers (Dashboard, Distribution, Reports, Equipment ×3, Digital LMs, Location Management, Admin Settings, School Activation) — 244 passing feature tests observed at last run.

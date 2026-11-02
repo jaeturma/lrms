@@ -15,6 +15,7 @@ use App\Models\ValidLrTvlItem;
 use App\Models\ValidLrVisit;
 use App\Models\ValidLrVisitItem;
 use App\Services\ValidLrReferenceImportService;
+use App\Services\ValidLrVisitService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -158,6 +159,56 @@ function seedValidLrReferenceData(): ValidLrSchool
     ]));
 
     return ValidLrSchool::query()->where('beis_school_id', '304205')->sole();
+}
+
+/**
+ * An LRMS school account for BEIS 304205 with a complete VALID-LR profile and
+ * current-year enrolment.
+ *
+ * @return array{school: School, user: User}
+ */
+function validLrSchoolAccount(bool $completeProfile = true): array
+{
+    $municipality = Municipality::factory()->create();
+    $district = District::factory()->create(['municipality_id' => $municipality->id]);
+    $school = School::factory()->create([
+        'school_id' => '304205',
+        'district_id' => $district->id,
+        'municipality_id' => $municipality->id,
+        'email' => 'nchs@example.test',
+        'school_head' => 'Head Teacher',
+        'lr_designate' => $completeProfile ? 'LR Designate' : null,
+        'ict_coordinator' => $completeProfile ? 'ICT Coordinator' : null,
+        'math_coordinator' => $completeProfile ? 'Math Coordinator' : null,
+        'science_coordinator' => $completeProfile ? 'Science Coordinator' : null,
+        'property_custodian' => $completeProfile ? 'Property Custodian' : null,
+    ]);
+    $user = User::factory()->create(['role' => 'school', 'school_id' => $school->id]);
+
+    return ['school' => $school, 'user' => $user];
+}
+
+function encodeValidLrEnrolment(School $school): void
+{
+    Enrollment::query()->create([
+        'school_id' => $school->id,
+        'school_year_id' => SchoolYear::factory()->create(['is_active' => true])->id,
+        'grade_level_id' => GradeLevel::factory()->create(['name' => 'Grade 7'])->id,
+        'male_count' => 400,
+        'female_count' => 410,
+    ]);
+}
+
+/**
+ * @return array<int, array{id: int, school_quantity: int}>
+ */
+function countEveryValidLrItem(ValidLrVisit $visit, int $quantity = 5): array
+{
+    return $visit->items()
+        ->whereIn('section', ValidLrVisit::COUNTED_SECTIONS)
+        ->pluck('id')
+        ->map(fn (int $id): array => ['id' => $id, 'school_quantity' => $quantity])
+        ->all();
 }
 
 test('reference data import keeps only the chosen division and joins wrapped titles', function () {
@@ -336,6 +387,7 @@ test('saving a visit records monitor inputs but never overwrites the imported re
     $admin = User::factory()->admin()->create();
     $this->actingAs($admin)->post(route('admin.valid-lr.visits.store', $school));
     $visit = ValidLrVisit::query()->sole();
+    $visit->update(['school_submitted_at' => now()]);
 
     $science = $visit->items()->where('section', 'lr')->where('group_label', 'Grade 7')->where('label', 'Science')->sole();
     $laptops = $visit->items()->where('section', 'im_lwd')->where('label', 'Laptop/s (2022)')->sole();
@@ -346,6 +398,8 @@ test('saving a visit records monitor inputs but never overwrites the imported re
             'status' => 'completed',
             'visited_at' => '2026-11-02 09:30:00',
             'monitoring_team' => 'Team A',
+            'school_representative' => 'School Head',
+            'prepared_by' => 'Monitor One',
             'indicators' => [
                 'lrmis_account' => ['answer' => 'yes', 'remarks' => 'Active'],
                 'unknown_question' => ['answer' => 'no'],
@@ -399,6 +453,139 @@ test('visit update validates mov options and delivery statuses', function () {
         ->assertSessionHasErrors(['status', 'lr_delivery_status', 'items.0.mov.0', 'items.0.actual_quantity']);
 });
 
+test('a visit cannot be marked completed until its key details are filled in', function () {
+    $school = seedValidLrReferenceData();
+    $admin = User::factory()->admin()->create();
+    $this->actingAs($admin)->post(route('admin.valid-lr.visits.store', $school));
+    $visit = ValidLrVisit::query()->sole();
+    $visit->update(['school_submitted_at' => now()]);
+
+    $this->actingAs($admin)
+        ->put(route('admin.valid-lr.visits.update', $visit), [
+            'status' => 'completed',
+            'visited_at' => null,
+            'monitoring_team' => '',
+            'school_representative' => '',
+            'prepared_by' => '',
+        ])
+        ->assertSessionHasErrors(['visited_at', 'monitoring_team', 'school_representative', 'prepared_by']);
+
+    expect($visit->refresh()->status)->toBe('draft');
+
+    // A draft can still be saved with those details missing.
+    $this->actingAs($admin)
+        ->put(route('admin.valid-lr.visits.update', $visit), [
+            'status' => 'draft',
+            'monitoring_team' => '',
+        ])
+        ->assertSessionHasNoErrors();
+});
+
+test('a visit has a printable copy', function () {
+    $school = seedValidLrReferenceData();
+    $admin = User::factory()->admin()->create(['name' => 'Printer User']);
+    $this->actingAs($admin)->post(route('admin.valid-lr.visits.store', $school));
+    $visit = ValidLrVisit::query()->sole();
+
+    $this->actingAs($admin)
+        ->get(route('admin.valid-lr.visits.print', $visit))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('AdminValidLrVisitPrint')
+            ->where('visit.id', $visit->id)
+            ->where('school.beis_school_id', '304205')
+            ->where('generatedBy', 'Printer User')
+            ->has('visit.items', $visit->items()->count())
+            ->has('indicatorQuestions', 4));
+});
+
+test('monitoring report rolls up coverage, indicators, delivery status and discrepancies', function () {
+    $school = seedValidLrReferenceData();
+    ValidLrSchool::factory()->create(['district' => $school->district]);
+    ValidLrSchool::factory()->create(['district' => 'Other District']);
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)->post(route('admin.valid-lr.visits.store', $school));
+    $visit = ValidLrVisit::query()->sole();
+    $visit->update(['school_submitted_at' => now()]);
+    $science = $visit->items()->where('section', 'lr')->where('group_label', 'Grade 7')->where('label', 'Science')->sole();
+    $standRod = $visit->items()->where('section', 'sme_co')->sole();
+
+    $this->actingAs($admin)->put(route('admin.valid-lr.visits.update', $visit), [
+        'status' => 'completed',
+        'visited_at' => '2026-11-02 09:30:00',
+        'monitoring_team' => 'Team A',
+        'school_representative' => 'School Head',
+        'prepared_by' => 'Monitor One',
+        'indicators' => ['lrmis_account' => ['answer' => 'yes'], 'inventory_matches' => ['answer' => 'no']],
+        'lr_delivery_status' => 'Incomplete',
+        'sme_delivery_status' => 'Complete',
+        'items' => [
+            ['id' => $science->id, 'actual_quantity' => 830],
+            ['id' => $standRod->id, 'actual_quantity' => 5],
+        ],
+    ])->assertSessionHasNoErrors();
+
+    ValidLrVisit::factory()->create(['visited_at' => '2026-10-01 08:00:00']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.valid-lr.report', ['district' => $school->district]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('AdminValidLrReport')
+            ->where('report.summary.schools', 2)
+            ->where('report.summary.schools_monitored', 1)
+            ->where('report.summary.completed', 1)
+            ->where('report.summary.coverage', 50)
+            ->where('report.districts.0.district', $school->district)
+            ->where('report.indicators.0.yes', 1)
+            ->where('report.indicators.2.no', 1)
+            ->where('report.delivery.0.incomplete', 1)
+            ->where('report.delivery.1.complete', 1)
+            ->has('report.visits', 1)
+            ->where('report.visits.0.items_counted', 2)
+            ->where('report.visits.0.discrepancies', 1));
+
+    $this->actingAs($admin)
+        ->get(route('admin.valid-lr.report', ['status' => 'draft']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('report.visits', 1)
+            ->where('report.visits.0.status', 'draft'));
+
+    $this->actingAs($admin)
+        ->get(route('admin.valid-lr.report', ['from' => '2026-11-01', 'to' => '2026-11-30']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('report.visits', 1)
+            ->where('report.visits.0.id', $visit->id));
+});
+
+test('monitoring report can be exported to csv and printed', function () {
+    $school = seedValidLrReferenceData();
+    $admin = User::factory()->admin()->create();
+    ValidLrVisit::factory()->for($school, 'validLrSchool')->create([
+        'status' => 'completed',
+        'monitoring_team' => 'Team CSV',
+        'key_findings' => 'All accounted for.',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.valid-lr.report.export'));
+    $response->assertOk()->assertDownload('valid-lr-monitoring-report.csv');
+
+    $csv = $response->streamedContent();
+    expect($csv)->toContain('"School ID",School,District')
+        ->and($csv)->toContain('304205')
+        ->and($csv)->toContain('Team CSV')
+        ->and($csv)->toContain('All accounted for.');
+
+    $this->actingAs($admin)
+        ->get(route('admin.valid-lr.report.print', ['status' => 'completed']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('AdminValidLrReportPrint')
+            ->where('filters.status', 'completed')
+            ->has('report.visits', 1));
+});
+
 test('visits can be deleted', function () {
     $school = seedValidLrReferenceData();
     $admin = User::factory()->admin()->create();
@@ -438,4 +625,301 @@ test('school users cannot reach valid-lr monitoring', function () {
     $this->actingAs(User::factory()->create(['role' => 'school']))
         ->get(route('admin.valid-lr.index'))
         ->assertForbidden();
+
+    $this->actingAs(User::factory()->create(['role' => 'school']))
+        ->get(route('admin.valid-lr.report'))
+        ->assertForbidden();
+});
+
+test('a school prepares its own counts and can submit only after completing the checklist', function () {
+    seedValidLrReferenceData();
+    ['school' => $school, 'user' => $user] = validLrSchoolAccount(completeProfile: false);
+
+    $this->actingAs($user)
+        ->get(route('school.valid-lr.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('SchoolValidLr')
+            ->where('available', true)
+            ->where('canEdit', true)
+            ->where('visit.stage', 'awaiting_school')
+            ->where('checklist.ready', false)
+            ->where('checklist.missing_profile', ['LR Designate', 'ICT Coordinator', 'Math Coordinator', 'Science Coordinator', 'Property Custodian']));
+
+    $visit = ValidLrVisit::query()->sole();
+    expect($visit->user_id)->toBeNull();
+    expect($visit->school_representative)->toBe('Head Teacher');
+
+    $science = $visit->items()->where('section', 'lr')->where('group_label', 'Grade 7')->where('label', 'Science')->sole();
+
+    $this->actingAs($user)
+        ->put(route('school.valid-lr.update'), [
+            'school_representative' => 'Head Teacher',
+            'items' => [['id' => $science->id, 'school_quantity' => 820, 'actual_quantity' => 1, 'mov' => ['Delivery Receipts']]],
+        ])
+        ->assertSessionHasNoErrors();
+
+    $science->refresh();
+    expect($science->school_quantity)->toBe(820);
+    expect($science->actual_quantity)->toBeNull();
+    expect($science->mov)->toBe(['Delivery Receipts']);
+
+    $this->actingAs($user)
+        ->post(route('school.valid-lr.submit'))
+        ->assertSessionHasErrors('submit');
+    expect($visit->refresh()->school_submitted_at)->toBeNull();
+
+    $school->update([
+        'lr_designate' => 'Ana Cruz',
+        'ict_coordinator' => 'Ben Reyes',
+        'math_coordinator' => 'Carla Diaz',
+        'science_coordinator' => 'Dan Lim',
+        'property_custodian' => 'Eva Tan',
+    ]);
+    encodeValidLrEnrolment($school);
+    $this->actingAs($user)->put(route('school.valid-lr.update'), ['items' => countEveryValidLrItem($visit)]);
+
+    $this->actingAs($user)
+        ->post(route('school.valid-lr.submit'))
+        ->assertSessionHasNoErrors();
+
+    $visit->refresh();
+    expect($visit->school_submitted_at)->not->toBeNull();
+    expect($visit->school_submitted_by)->toBe($user->id);
+    expect($visit->stage())->toBe(ValidLrVisit::STAGE_READY);
+
+    // The school can still correct its counts after submitting.
+    $this->actingAs($user)
+        ->put(route('school.valid-lr.update'), ['items' => [['id' => $science->id, 'school_quantity' => 830]]])
+        ->assertSessionHasNoErrors();
+    expect($science->refresh()->school_quantity)->toBe(830);
+});
+
+test('the monitoring team cannot validate before the school submits unless an admin overrides', function () {
+    $validLrSchool = seedValidLrReferenceData();
+    $leader = User::factory()->create(['role' => 'librarian', 'name' => 'Team Leader']);
+    $manager = User::factory()->create(['role' => 'manager']);
+
+    $this->actingAs($manager)
+        ->post(route('admin.valid-lr.visits.store', $validLrSchool), [
+            'team_leader_id' => $leader->id,
+            'scheduled_at' => '2026-11-10 08:00:00',
+            'monitoring_team' => 'Team A',
+        ])
+        ->assertRedirect();
+
+    $visit = ValidLrVisit::query()->sole();
+    expect($visit->team_leader_id)->toBe($leader->id);
+    expect($visit->scheduled_at->toDateString())->toBe('2026-11-10');
+
+    $this->actingAs($leader)
+        ->put(route('admin.valid-lr.visits.update', $visit), ['status' => 'draft', 'monitoring_team' => 'Team A'])
+        ->assertSessionHasErrors('status');
+    expect($visit->refresh()->validation_started_at)->toBeNull();
+
+    $this->actingAs($leader)
+        ->post(route('admin.valid-lr.visits.override', $visit), ['override_reason' => 'School has no LRMS account yet.'])
+        ->assertForbidden();
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->post(route('admin.valid-lr.visits.override', $visit), ['override_reason' => 'School has no LRMS account yet.'])
+        ->assertSessionHasNoErrors();
+
+    expect($visit->refresh()->stage())->toBe(ValidLrVisit::STAGE_READY);
+
+    $this->actingAs($leader)
+        ->put(route('admin.valid-lr.visits.update', $visit), ['status' => 'draft', 'monitoring_team' => 'Team A'])
+        ->assertSessionHasNoErrors();
+
+    expect($visit->refresh()->stage())->toBe(ValidLrVisit::STAGE_VALIDATING);
+});
+
+test('only the assigned team leader and admins can edit a visit; other monitoring roles only watch', function () {
+    $validLrSchool = seedValidLrReferenceData();
+    $leader = User::factory()->create(['role' => 'librarian']);
+    $visit = app(ValidLrVisitService::class)->start($validLrSchool, null, ['team_leader_id' => $leader->id]);
+    $visit->update(['school_submitted_at' => now()]);
+
+    foreach (['cidchief', 'sds', 'manager', 'librarian'] as $role) {
+        $viewer = User::factory()->create(['role' => $role]);
+
+        $this->actingAs($viewer)
+            ->get(route('admin.valid-lr.visits.edit', $visit))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('canEdit', false)->where('canDelete', false));
+
+        $this->actingAs($viewer)
+            ->put(route('admin.valid-lr.visits.update', $visit), ['status' => 'draft'])
+            ->assertForbidden();
+    }
+
+    $this->actingAs($leader)
+        ->get(route('admin.valid-lr.visits.edit', $visit))
+        ->assertInertia(fn (Assert $page) => $page->where('canEdit', true));
+
+    $this->actingAs(User::factory()->create(['role' => 'librarian']))
+        ->post(route('admin.valid-lr.visits.store', $validLrSchool))
+        ->assertForbidden();
+
+    $this->actingAs($leader)
+        ->delete(route('admin.valid-lr.visits.destroy', $visit))
+        ->assertForbidden();
+});
+
+test('scheduling reuses the visit the school already started', function () {
+    $validLrSchool = seedValidLrReferenceData();
+    ['user' => $user] = validLrSchoolAccount();
+    $this->actingAs($user)->get(route('school.valid-lr.index'));
+    $leader = User::factory()->create(['role' => 'manager']);
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->post(route('admin.valid-lr.visits.store', $validLrSchool), ['team_leader_id' => $leader->id])
+        ->assertRedirect();
+
+    expect(ValidLrVisit::query()->count())->toBe(1);
+    expect(ValidLrVisit::query()->sole()->team_leader_id)->toBe($leader->id);
+});
+
+test('team sees the school count beside the validated count and completing snapshots the personnel', function () {
+    $validLrSchool = seedValidLrReferenceData();
+    ['school' => $school, 'user' => $user] = validLrSchoolAccount();
+    encodeValidLrEnrolment($school);
+    $this->actingAs($user)->get(route('school.valid-lr.index'));
+    $visit = ValidLrVisit::query()->sole();
+    $this->actingAs($user)->put(route('school.valid-lr.update'), ['items' => countEveryValidLrItem($visit, 7)]);
+    $this->actingAs($user)->post(route('school.valid-lr.submit'))->assertSessionHasNoErrors();
+
+    $admin = User::factory()->admin()->create();
+    $item = $visit->items()->where('section', 'lr')->first();
+
+    $this->actingAs($admin)
+        ->get(route('admin.valid-lr.visits.edit', $visit))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('visit.stage', 'ready')
+            ->where('visit.personnel.lr_designate', 'LR Designate')
+            ->where('checklist.ready', true)
+            ->where("liveSchoolCounts.{$item->id}", 7));
+
+    $this->actingAs($admin)->put(route('admin.valid-lr.visits.update', $visit), [
+        'status' => 'completed',
+        'visited_at' => '2026-11-10 09:00:00',
+        'monitoring_team' => 'Team A',
+        'school_representative' => 'Head Teacher',
+        'prepared_by' => 'Monitor',
+        'items' => [['id' => $item->id, 'actual_quantity' => 6, 'school_quantity' => 999]],
+    ])->assertSessionHasNoErrors();
+
+    $item->refresh();
+    expect($item->actual_quantity)->toBe(6);
+    expect($item->school_quantity)->toBe(7);
+
+    $school->update(['lr_designate' => 'Someone Else']);
+    $visit->refresh();
+    expect($visit->personnel()['lr_designate'])->toBe('LR Designate');
+
+    // A completed visit is closed to further school changes.
+    $this->actingAs($user)
+        ->put(route('school.valid-lr.update'), ['items' => [['id' => $item->id, 'school_quantity' => 1]]])
+        ->assertStatus(422);
+
+    $this->actingAs($admin)
+        ->get(route('admin.valid-lr.visits.print', $visit))
+        ->assertInertia(fn (Assert $page) => $page->where('visit.personnel.lr_designate', 'LR Designate'));
+
+    $csv = $this->actingAs($admin)->get(route('admin.valid-lr.report.export'))->streamedContent();
+    expect($csv)->toContain('"LR Designate","ICT Coordinator"')->and($csv)->toContain('Head Teacher');
+});
+
+test('live board shows preparation and validation progress to division monitors', function () {
+    $validLrSchool = seedValidLrReferenceData();
+    ValidLrSchool::factory()->create();
+    ['user' => $user] = validLrSchoolAccount();
+    $this->actingAs($user)->get(route('school.valid-lr.index'));
+    $visit = ValidLrVisit::query()->sole();
+    $item = $visit->items()->where('section', 'lr')->first();
+    $this->actingAs($user)->put(route('school.valid-lr.update'), ['items' => [['id' => $item->id, 'school_quantity' => 3]]]);
+
+    foreach (['cidchief', 'sds', 'asds', 'manager'] as $role) {
+        $this->actingAs(User::factory()->create(['role' => $role]))
+            ->get(route('admin.valid-lr.board'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('AdminValidLrBoard')
+                ->where('summary.schools', 2)
+                ->where('summary.not_started', 1)
+                ->where('summary.stages.awaiting_school', 1)
+                ->has('visits.data', 1)
+                ->where('visits.data.0.beis_school_id', '304205')
+                ->where('visits.data.0.stage', 'awaiting_school')
+                ->where('visits.data.0.school_counted', 1)
+                ->where('visits.data.0.enrolment_complete', false)
+                ->where('visits.data.0.missing_profile', []));
+    }
+
+    $this->actingAs(User::factory()->create(['role' => 'cidchief']))
+        ->get(route('admin.valid-lr.board', ['stage' => 'completed']))
+        ->assertInertia(fn (Assert $page) => $page->has('visits.data', 0));
+
+    $this->actingAs($user)->get(route('admin.valid-lr.board'))->assertForbidden();
+});
+
+test('school personnel can be recorded on the school profile', function () {
+    $municipality = Municipality::factory()->create();
+    $district = District::factory()->create(['municipality_id' => $municipality->id]);
+    $school = School::factory()->create(['district_id' => $district->id, 'municipality_id' => $municipality->id]);
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->put(route('admin.schools.update', $school), [
+            'school_id' => $school->school_id,
+            'school_name' => $school->school_name,
+            'school_type' => $school->school_type,
+            'district_id' => $district->id,
+            'municipality_id' => $municipality->id,
+            'school_head' => 'Head Teacher',
+            'lr_designate' => 'Ana Cruz',
+            'ict_coordinator' => 'Ben Reyes',
+            'math_coordinator' => 'Carla Diaz',
+            'science_coordinator' => 'Dan Lim',
+            'property_custodian' => 'Eva Tan',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $school->refresh();
+    expect($school->lr_designate)->toBe('Ana Cruz');
+    expect($school->science_coordinator)->toBe('Dan Lim');
+});
+
+test('lr managers, ito, superadmin and system admin can correct lrmis counts on a visit', function () {
+    $validLrSchool = seedValidLrReferenceData();
+    $visit = app(ValidLrVisitService::class)->start($validLrSchool, null);
+    $science = $visit->items()->where('section', 'lr')->where('group_label', 'Grade 7')->where('label', 'Science')->sole();
+    $manager = User::factory()->create(['role' => 'manager', 'name' => 'LR Manager']);
+
+    $this->actingAs($manager)
+        ->put(route('admin.valid-lr.visits.lrmis', $visit), ['items' => [['id' => $science->id, 'lrmis_quantity' => 840]]])
+        ->assertSessionHasNoErrors();
+
+    $science->refresh();
+    expect($science->lrmis_quantity)->toBe(840);
+    expect($science->lrmis_original_quantity)->toBe(832);
+    expect($science->lrmis_adjusted_by)->toBe($manager->id);
+    expect($validLrSchool->lrmisCounts()->where('grade_level', 'Grade 7')->where('learning_area', 'Science')->value('total'))->toBe(840);
+
+    $this->actingAs(User::factory()->create(['role' => 'ito']))
+        ->put(route('admin.valid-lr.visits.lrmis', $visit), ['items' => [['id' => $science->id, 'lrmis_quantity' => 845]]]);
+    expect($science->refresh()->lrmis_original_quantity)->toBe(832);
+
+    $this->actingAs($manager)
+        ->get(route('admin.valid-lr.visits.edit', $visit))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('canAdjustLrmis', true)
+            ->where('canEdit', false));
+
+    foreach (['librarian', 'cidchief', 'sds', 'admin'] as $role) {
+        $this->actingAs(User::factory()->create(['role' => $role]))
+            ->put(route('admin.valid-lr.visits.lrmis', $visit), ['items' => [['id' => $science->id, 'lrmis_quantity' => 1]]])
+            ->assertForbidden();
+    }
+
+    expect($science->refresh()->lrmis_quantity)->toBe(845);
 });

@@ -11,6 +11,10 @@ type School = {
     barangay?: string | null;
     school_head?: string | null;
     librarian?: string | null;
+    lr_designate?: string | null;
+    ict_coordinator?: string | null;
+    math_coordinator?: string | null;
+    science_coordinator?: string | null;
     property_custodian?: string | null;
     primary_mobile_no?: string | null;
     secondary_mobile_no?: string | null;
@@ -57,6 +61,10 @@ export default function AdminSchoolEdit({ school, schoolTypes, districts, munici
         barangay_id: school.barangay_id ?? '',
         school_head: school.school_head ?? '',
         librarian: school.librarian ?? '',
+        lr_designate: school.lr_designate ?? '',
+        ict_coordinator: school.ict_coordinator ?? '',
+        math_coordinator: school.math_coordinator ?? '',
+        science_coordinator: school.science_coordinator ?? '',
         property_custodian: school.property_custodian ?? '',
         primary_mobile_no: school.primary_mobile_no ?? '',
         secondary_mobile_no: school.secondary_mobile_no ?? '',
@@ -200,6 +208,38 @@ export default function AdminSchoolEdit({ school, schoolTypes, districts, munici
                                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                                 value={data.librarian}
                                 onChange={(event) => setData('librarian', event.target.value)}
+                            />
+                        </Field>
+
+                        <Field label="LR Designate" error={errors.lr_designate}>
+                            <input
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.lr_designate}
+                                onChange={(event) => setData('lr_designate', event.target.value)}
+                            />
+                        </Field>
+
+                        <Field label="ICT Coordinator" error={errors.ict_coordinator}>
+                            <input
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.ict_coordinator}
+                                onChange={(event) => setData('ict_coordinator', event.target.value)}
+                            />
+                        </Field>
+
+                        <Field label="Math Coordinator" error={errors.math_coordinator}>
+                            <input
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.math_coordinator}
+                                onChange={(event) => setData('math_coordinator', event.target.value)}
+                            />
+                        </Field>
+
+                        <Field label="Science Coordinator" error={errors.science_coordinator}>
+                            <input
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.science_coordinator}
+                                onChange={(event) => setData('science_coordinator', event.target.value)}
                             />
                         </Field>
 

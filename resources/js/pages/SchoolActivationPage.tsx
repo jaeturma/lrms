@@ -26,6 +26,10 @@ type School = {
     barangay?: string | null;
     school_head?: string | null;
     librarian?: string | null;
+    lr_designate?: string | null;
+    ict_coordinator?: string | null;
+    math_coordinator?: string | null;
+    science_coordinator?: string | null;
     property_custodian?: string | null;
     primary_mobile_no?: string | null;
     secondary_mobile_no?: string | null;
@@ -80,6 +84,10 @@ export default function SchoolActivationPage({
     const { data, setData, post, processing, errors } = useForm({
         school_head: schoolData.school_head ?? '',
         librarian: schoolData.librarian ?? '',
+        lr_designate: schoolData.lr_designate ?? '',
+        ict_coordinator: schoolData.ict_coordinator ?? '',
+        math_coordinator: schoolData.math_coordinator ?? '',
+        science_coordinator: schoolData.science_coordinator ?? '',
         property_custodian: schoolData.property_custodian ?? '',
         primary_mobile_no: schoolData.primary_mobile_no ?? '',
         secondary_mobile_no: schoolData.secondary_mobile_no ?? '',
@@ -337,6 +345,46 @@ export default function SchoolActivationPage({
                                             handleUppercaseInput(event.target.value, 'librarian')
                                         }
                                         placeholder="ENTER LIBRARIAN NAME"
+                                    />
+                                </Field>
+                                <Field label="LR Designate" error={errors.lr_designate}>
+                                    <Input
+                                        value={data.lr_designate}
+                                        maxLength={50}
+                                        onChange={(event) =>
+                                            handleUppercaseInput(event.target.value, 'lr_designate')
+                                        }
+                                        placeholder="ENTER LR DESIGNATE NAME"
+                                    />
+                                </Field>
+                                <Field label="ICT Coordinator" error={errors.ict_coordinator}>
+                                    <Input
+                                        value={data.ict_coordinator}
+                                        maxLength={50}
+                                        onChange={(event) =>
+                                            handleUppercaseInput(event.target.value, 'ict_coordinator')
+                                        }
+                                        placeholder="ENTER ICT COORDINATOR NAME"
+                                    />
+                                </Field>
+                                <Field label="Math Coordinator" error={errors.math_coordinator}>
+                                    <Input
+                                        value={data.math_coordinator}
+                                        maxLength={50}
+                                        onChange={(event) =>
+                                            handleUppercaseInput(event.target.value, 'math_coordinator')
+                                        }
+                                        placeholder="ENTER MATH COORDINATOR NAME"
+                                    />
+                                </Field>
+                                <Field label="Science Coordinator" error={errors.science_coordinator}>
+                                    <Input
+                                        value={data.science_coordinator}
+                                        maxLength={50}
+                                        onChange={(event) =>
+                                            handleUppercaseInput(event.target.value, 'science_coordinator')
+                                        }
+                                        placeholder="ENTER SCIENCE COORDINATOR NAME"
                                     />
                                 </Field>
                             </div>

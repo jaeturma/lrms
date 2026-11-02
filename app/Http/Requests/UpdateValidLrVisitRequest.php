@@ -15,7 +15,9 @@ class UpdateValidLrVisitRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        $visit = $this->route('validLrVisit');
+
+        return $visit instanceof ValidLrVisit && $visit->canBeEditedBy($this->user());
     }
 
     /**
@@ -30,9 +32,9 @@ class UpdateValidLrVisitRequest extends FormRequest
 
         return [
             'status' => ['required', Rule::in(ValidLrVisit::STATUSES)],
-            'visited_at' => ['nullable', 'date'],
-            'monitoring_team' => ['nullable', 'string', 'max:1000'],
-            'school_representative' => ['nullable', 'string', 'max:255'],
+            'visited_at' => ['nullable', 'required_if:status,completed', 'date'],
+            'monitoring_team' => ['nullable', 'required_if:status,completed', 'string', 'max:1000'],
+            'school_representative' => ['nullable', 'required_if:status,completed', 'string', 'max:255'],
             'indicators' => ['nullable', 'array'],
             'indicators.*.answer' => ['nullable', Rule::in(['yes', 'no'])],
             'indicators.*.remarks' => $remarks,
@@ -43,7 +45,7 @@ class UpdateValidLrVisitRequest extends FormRequest
             'recommended_actions' => ['nullable', 'string', 'max:5000'],
             'issues_concerns' => ['nullable', 'string', 'max:5000'],
             'actions_taken' => ['nullable', 'string', 'max:5000'],
-            'prepared_by' => ['nullable', 'string', 'max:255'],
+            'prepared_by' => ['nullable', 'required_if:status,completed', 'string', 'max:255'],
             'acknowledged_by' => ['nullable', 'string', 'max:255'],
             'items' => ['nullable', 'array'],
             'items.*.id' => ['required', 'integer'],
@@ -59,6 +61,19 @@ class UpdateValidLrVisitRequest extends FormRequest
             'items.*.remarks_repairs' => $remarks,
             'items.*.remarks_missing' => $remarks,
             'items.*.remarks_others' => $remarks,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'visited_at.required_if' => 'Enter the date and time of the visit before marking it completed.',
+            'monitoring_team.required_if' => 'Enter the monitoring team before marking the visit completed.',
+            'school_representative.required_if' => 'Enter the school representative before marking the visit completed.',
+            'prepared_by.required_if' => 'Enter who prepared the report before marking the visit completed.',
         ];
     }
 

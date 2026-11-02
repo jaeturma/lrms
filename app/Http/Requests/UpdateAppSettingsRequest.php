@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Services\AppSettingsService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateAppSettingsRequest extends FormRequest
 {
@@ -29,6 +31,12 @@ class UpdateAppSettingsRequest extends FormRequest
             'app_title' => ['required', 'string', 'max:255'],
             'app_logo_url' => ['nullable', 'url', 'max:2048'],
             'app_logo_file' => ['nullable', 'image', 'max:2048'],
+            'website_logo_url' => ['nullable', 'url', 'max:2048'],
+            'website_logo_file' => ['nullable', 'image', 'max:2048'],
+            'color_theme' => ['nullable', Rule::in(array_keys(AppSettingsService::COLOR_THEMES))],
+            'recaptcha_enabled' => ['nullable', 'boolean'],
+            'recaptcha_site_key' => ['nullable', 'required_if_accepted:recaptcha_enabled', 'string', 'max:255'],
+            'recaptcha_secret_key' => ['nullable', 'string', 'max:255'],
             'smtp_enabled' => ['nullable', 'boolean'],
             'smtp_host' => ['nullable', 'string', 'max:255'],
             'smtp_port' => ['nullable', 'integer', 'min:1', 'max:65535'],

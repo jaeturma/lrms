@@ -1,10 +1,23 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, ClipboardCheck, Play } from 'lucide-react';
+import { Head, Link, useForm } from '@inertiajs/react';
+import {
+    ArrowLeft,
+    CalendarClock,
+    ClipboardCheck,
+    Printer,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { EmptyTableRow } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import type { VisitStage } from '@/components/valid-lr/visit-sections';
+import {
+    Field,
+    fieldClass,
+    PersonnelList,
+    stageTone,
+} from '@/components/valid-lr/visit-sections';
 import { cn } from '@/lib/utils';
 
 type LearningResourceRow = {
@@ -48,7 +61,20 @@ type Props = {
         school_type: string | null;
         curricular_offering: string | null;
         lrms_school: { school_id: string; school_name: string } | null;
+        personnel: Record<string, string | null>;
     };
+    personnelLabels: Record<string, string>;
+    openVisit: {
+        id: number;
+        stage: VisitStage;
+        team_leader_id: number | null;
+        team_leader: string | null;
+        scheduled_at: string | null;
+        monitoring_team: string | null;
+    } | null;
+    stages: Record<VisitStage, string>;
+    canSchedule: boolean;
+    teamLeaders: Array<{ id: number; name: string; role: string }>;
     profile: {
         learning_resources: LearningResourceRow[];
         sme: {
@@ -68,6 +94,7 @@ type Props = {
     visits: Array<{
         id: number;
         status: string;
+        stage: VisitStage;
         visited_at: string | null;
         monitor: string | null;
         monitoring_team: string | null;
@@ -79,9 +106,24 @@ type Tab = 'lr' | 'sme' | 'tvl';
 const formatNumber = (value: number | null) =>
     value === null ? '-' : value.toLocaleString();
 
-export default function AdminValidLrSchool({ school, profile, visits }: Props) {
+export default function AdminValidLrSchool({
+    school,
+    profile,
+    visits,
+    personnelLabels,
+    openVisit,
+    stages,
+    canSchedule,
+    teamLeaders,
+}: Props) {
     const [tab, setTab] = useState<Tab>('lr');
-    const [starting, setStarting] = useState(false);
+    const schedule = useForm({
+        team_leader_id: openVisit?.team_leader_id
+            ? String(openVisit.team_leader_id)
+            : '',
+        scheduled_at: openVisit?.scheduled_at ?? '',
+        monitoring_team: openVisit?.monitoring_team ?? '',
+    });
 
     const levels = useMemo(
         () =>
@@ -91,14 +133,16 @@ export default function AdminValidLrSchool({ school, profile, visits }: Props) {
         [profile.learning_resources],
     );
 
-    const startVisit = () => {
-        router.post(
+    const scheduleMonitoring = () => {
+        schedule.transform((payload) => ({
+            team_leader_id: payload.team_leader_id
+                ? Number(payload.team_leader_id)
+                : null,
+            scheduled_at: payload.scheduled_at || null,
+            monitoring_team: payload.monitoring_team || null,
+        }));
+        schedule.post(
             `/app/admin/valid-lr/schools/${school.beis_school_id}/visits`,
-            {},
-            {
-                onStart: () => setStarting(true),
-                onFinish: () => setStarting(false),
-            },
         );
     };
 
@@ -149,16 +193,15 @@ export default function AdminValidLrSchool({ school, profile, visits }: Props) {
                                         Back
                                     </Link>
                                 </Button>
-                                <Button
-                                    type="button"
-                                    onClick={startVisit}
-                                    disabled={starting}
-                                >
-                                    <Play className="mr-1 h-4 w-4" />
-                                    {starting
-                                        ? 'Starting...'
-                                        : 'Start Monitoring Visit'}
-                                </Button>
+                                {openVisit && (
+                                    <Button asChild>
+                                        <Link
+                                            href={`/app/admin/valid-lr/visits/${openVisit.id}/edit`}
+                                        >
+                                            Open Current Visit
+                                        </Link>
+                                    </Button>
+                                )}
                             </>
                         }
                     >
@@ -168,6 +211,145 @@ export default function AdminValidLrSchool({ school, profile, visits }: Props) {
                                 : 'This school is not registered in LRMS yet, so only the imported reference data is shown.'}
                         </p>
                     </PageHeader>
+
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                            <h2 className="mb-3 text-lg font-semibold text-foreground">
+                                School Personnel
+                            </h2>
+                            {school.lrms_school ? (
+                                <PersonnelList
+                                    personnel={school.personnel}
+                                    labels={personnelLabels}
+                                />
+                            ) : (
+                                <p className="text-sm text-muted-foreground">
+                                    Not available — the school has no LRMS
+                                    account to keep its profile.
+                                </p>
+                            )}
+                        </section>
+
+                        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                <h2 className="text-lg font-semibold text-foreground">
+                                    Monitoring Schedule
+                                </h2>
+                                {openVisit && (
+                                    <StatusBadge
+                                        tone={stageTone[openVisit.stage]}
+                                    >
+                                        {stages[openVisit.stage]}
+                                    </StatusBadge>
+                                )}
+                            </div>
+                            {canSchedule ? (
+                                <div className="grid gap-3">
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                        <Field
+                                            label="Team leader"
+                                            error={
+                                                schedule.errors.team_leader_id
+                                            }
+                                        >
+                                            <select
+                                                className={cn(
+                                                    fieldClass,
+                                                    'h-9',
+                                                )}
+                                                value={
+                                                    schedule.data.team_leader_id
+                                                }
+                                                onChange={(event) =>
+                                                    schedule.setData(
+                                                        'team_leader_id',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            >
+                                                <option value="">
+                                                    Not assigned
+                                                </option>
+                                                {teamLeaders.map((leader) => (
+                                                    <option
+                                                        key={leader.id}
+                                                        value={leader.id}
+                                                    >
+                                                        {leader.name} (
+                                                        {leader.role})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </Field>
+                                        <Field
+                                            label="Scheduled monitoring"
+                                            error={schedule.errors.scheduled_at}
+                                        >
+                                            <Input
+                                                type="datetime-local"
+                                                value={
+                                                    schedule.data.scheduled_at
+                                                }
+                                                onChange={(event) =>
+                                                    schedule.setData(
+                                                        'scheduled_at',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            />
+                                        </Field>
+                                    </div>
+                                    <Field
+                                        label="Monitoring team members"
+                                        error={schedule.errors.monitoring_team}
+                                    >
+                                        <Input
+                                            value={
+                                                schedule.data.monitoring_team
+                                            }
+                                            onChange={(event) =>
+                                                schedule.setData(
+                                                    'monitoring_team',
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                    </Field>
+                                    <div>
+                                        <Button
+                                            type="button"
+                                            disabled={schedule.processing}
+                                            onClick={scheduleMonitoring}
+                                        >
+                                            <CalendarClock className="mr-1 h-4 w-4" />
+                                            {openVisit
+                                                ? 'Update Schedule'
+                                                : 'Schedule Monitoring'}
+                                        </Button>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        The school completes its profile,
+                                        enrolment and counts first; the team
+                                        leader validates once the school
+                                        submits.
+                                    </p>
+                                </div>
+                            ) : openVisit ? (
+                                <p className="text-sm text-muted-foreground">
+                                    Team leader:{' '}
+                                    {openVisit.team_leader ?? 'not assigned'}
+                                    {openVisit.scheduled_at
+                                        ? ` · scheduled ${openVisit.scheduled_at.replace('T', ' ')}`
+                                        : ''}
+                                </p>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">
+                                    Monitoring has not been scheduled for this
+                                    school yet.
+                                </p>
+                            )}
+                        </section>
+                    </div>
 
                     {visits.length > 0 && (
                         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -193,14 +375,19 @@ export default function AdminValidLrSchool({ school, profile, visits }: Props) {
                                                 '-'}
                                         </span>
                                         <StatusBadge
-                                            tone={
-                                                visit.status === 'completed'
-                                                    ? 'success'
-                                                    : 'warning'
-                                            }
+                                            tone={stageTone[visit.stage]}
                                         >
-                                            {visit.status}
+                                            {stages[visit.stage]}
                                         </StatusBadge>
+                                        <a
+                                            href={`/app/admin/valid-lr/visits/${visit.id}/print`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="ml-auto inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                                        >
+                                            <Printer className="h-3.5 w-3.5" />
+                                            Print
+                                        </a>
                                     </li>
                                 ))}
                             </ul>

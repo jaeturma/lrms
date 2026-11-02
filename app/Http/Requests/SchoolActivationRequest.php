@@ -31,6 +31,10 @@ class SchoolActivationRequest extends FormRequest
             'school_head' => ['required', 'string', 'max:80'],
             'librarian' => ['nullable', 'string', 'max:50'],
             'property_custodian' => ['nullable', 'string', 'max:50'],
+            'lr_designate' => ['nullable', 'string', 'max:50'],
+            'ict_coordinator' => ['nullable', 'string', 'max:50'],
+            'math_coordinator' => ['nullable', 'string', 'max:50'],
+            'science_coordinator' => ['nullable', 'string', 'max:50'],
             'primary_mobile_no' => ['nullable', 'string', 'max:15'],
             'secondary_mobile_no' => ['nullable', 'string', 'max:15'],
             'email' => [

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Models\User;
+use App\Rules\ValidRecaptcha;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -69,7 +70,8 @@ class FortifyServiceProvider extends ServiceProvider
             $request->validate([
                 'email' => ['required', 'email', 'max:50'],
                 'password' => ['required', 'string', 'max:30'],
-            ]);
+                'g-recaptcha-response' => ValidRecaptcha::rules(),
+            ], ['g-recaptcha-response.required' => 'Please confirm you are not a robot.']);
 
             $user = User::query()
                 ->where('email', $request->string('email')->toString())

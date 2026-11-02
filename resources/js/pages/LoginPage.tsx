@@ -1,7 +1,9 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { GraduationCap, LogIn, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
+import { RecaptchaField } from '@/components/recaptcha-field';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -12,6 +14,8 @@ type Props = {
 };
 
 export default function LoginPage({ status }: Props) {
+    const [attempts, setAttempts] = useState(0);
+
     return (
         <>
             <Head title="School Login" />
@@ -30,7 +34,7 @@ export default function LoginPage({ status }: Props) {
                     </div>
                 </div>
 
-                <Form action="/login" method="post" className="space-y-4">
+                <Form action="/login" method="post" className="space-y-4" onFinish={() => setAttempts((count) => count + 1)}>
                     {({ errors, processing }) => (
                         <>
                             <div className="space-y-1">
@@ -56,6 +60,8 @@ export default function LoginPage({ status }: Props) {
                                     Forgot Password?
                                 </Link>
                             </div>
+
+                            <RecaptchaField error={errors['g-recaptcha-response']} resetKey={attempts} />
 
                             <Button type="submit" className="w-full" disabled={processing}>
                                 <LogIn className="size-4" />

@@ -1,13 +1,17 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { LogIn, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
+import { RecaptchaField } from '@/components/recaptcha-field';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function AdminLoginPage() {
+    const [attempts, setAttempts] = useState(0);
+
     return (
         <>
             <Head title="Admin Login" />
@@ -26,7 +30,7 @@ export default function AdminLoginPage() {
                     </div>
                 </div>
 
-                <Form action="/app/admin/login" method="post" className="space-y-4">
+                <Form action="/app/admin/login" method="post" className="space-y-4" onFinish={() => setAttempts((count) => count + 1)}>
                     {({ errors, processing }) => (
                         <>
                             <div className="space-y-1">
@@ -52,6 +56,8 @@ export default function AdminLoginPage() {
                                     Forgot Password?
                                 </Link>
                             </div>
+
+                            <RecaptchaField error={errors['g-recaptcha-response']} resetKey={attempts} />
 
                             <Button type="submit" className="w-full" disabled={processing}>
                                 <LogIn className="size-4" />

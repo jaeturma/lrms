@@ -26,6 +26,21 @@ class ValidLrVisitService
         'remarks_others',
     ];
 
+    /**
+     * Fields a school may change while preparing for monitoring. The
+     * validated `actual_quantity` belongs to the monitoring team.
+     */
+    private const SCHOOL_EDITABLE_ITEM_FIELDS = [
+        'school_quantity',
+        'distributed_quantity',
+        'enrolment',
+        'year_received',
+        'mov',
+        'remarks_repairs',
+        'remarks_missing',
+        'remarks_others',
+    ];
+
     private const SECTIONS_WITH_EDITABLE_REFERENCE = [
         ValidLrVisitItem::SECTION_LEARNERS_WITH_DISABILITIES,
     ];
@@ -36,16 +51,20 @@ class ValidLrVisitService
      * Starts a visit with a snapshot of the school's current reference data,
      * so later re-imports never change what was validated.
      */
-    public function start(ValidLrSchool $validLrSchool, User $user): ValidLrVisit
+    public function start(ValidLrSchool $validLrSchool, ?User $user, array $assignment = []): ValidLrVisit
     {
         $profile = $this->profileService->build($validLrSchool);
 
-        return DB::transaction(function () use ($validLrSchool, $user, $profile): ValidLrVisit {
+        return DB::transaction(function () use ($validLrSchool, $user, $profile, $assignment): ValidLrVisit {
             $visit = $validLrSchool->visits()->create([
-                'user_id' => $user->id,
+                'user_id' => $user?->id,
                 'status' => 'draft',
-                'visited_at' => now(),
-                'prepared_by' => $user->name,
+                'visited_at' => $assignment['scheduled_at'] ?? now(),
+                'team_leader_id' => $assignment['team_leader_id'] ?? null,
+                'scheduled_at' => $assignment['scheduled_at'] ?? null,
+                'monitoring_team' => $assignment['monitoring_team'] ?? null,
+                'school_representative' => $validLrSchool->school?->school_head,
+                'prepared_by' => $user?->name,
                 'indicators' => collect(ValidLrVisit::INDICATORS)
                     ->map(fn (): array => ['answer' => null, 'remarks' => null])
                     ->all(),
@@ -121,43 +140,143 @@ class ValidLrVisitService
     }
 
     /**
+     * The school's open visit, started on first use so the school can begin
+     * counting before the monitoring team arrives.
+     */
+    public function openVisitFor(ValidLrSchool $validLrSchool, bool $createIfMissing = false): ?ValidLrVisit
+    {
+        $visit = $validLrSchool->visits()->where('status', '!=', 'completed')->latest('id')->first();
+
+        if (! $visit && $createIfMissing && ! $validLrSchool->visits()->exists()) {
+            $visit = $this->start($validLrSchool, null);
+        }
+
+        return $visit;
+    }
+
+    /**
+     * Monitoring team save. The first save marks validation as started.
+     *
      * @param  array<string, mixed>  $data  validated UpdateValidLrVisitRequest data
      */
     public function update(ValidLrVisit $visit, array $data): ValidLrVisit
     {
         DB::transaction(function () use ($visit, $data): void {
-            $visit->update(collect($data)->except('items')->all());
+            $visit->fill(collect($data)->except('items')->all());
+            $visit->validation_started_at ??= now();
+            $visit->save();
 
-            $items = $visit->items()->get()->keyBy('id');
+            $this->updateItems($visit, $data['items'] ?? [], self::EDITABLE_ITEM_FIELDS);
+        });
 
-            foreach ($data['items'] ?? [] as $input) {
+        return $visit->refresh();
+    }
+
+    /**
+     * School save while preparing for (or during) monitoring.
+     *
+     * @param  array<string, mixed>  $data  validated UpdateValidLrSchoolCountRequest data
+     */
+    public function updateBySchool(ValidLrVisit $visit, array $data): ValidLrVisit
+    {
+        DB::transaction(function () use ($visit, $data): void {
+            if (array_key_exists('school_representative', $data)) {
+                $visit->update(['school_representative' => $data['school_representative']]);
+            }
+
+            $this->updateItems($visit, $data['items'] ?? [], self::SCHOOL_EDITABLE_ITEM_FIELDS);
+            $visit->touch();
+        });
+
+        return $visit->refresh();
+    }
+
+    public function submitBySchool(ValidLrVisit $visit, User $user): ValidLrVisit
+    {
+        $visit->update([
+            'school_submitted_at' => now(),
+            'school_submitted_by' => $user->id,
+        ]);
+
+        return $visit;
+    }
+
+    /**
+     * Corrects LRMIS-encoded counts on a visit's learning resource rows,
+     * keeping the imported value and who changed it. Rows covering a single
+     * grade also update the school's reference LRMIS count.
+     *
+     * @param  array<int, array{id: int, lrmis_quantity: ?int}>  $inputs
+     */
+    public function adjustLrmis(ValidLrVisit $visit, array $inputs, User $user): int
+    {
+        $items = $visit->items()->where('section', ValidLrVisitItem::SECTION_LEARNING_RESOURCES)->get()->keyBy('id');
+        $changed = 0;
+
+        DB::transaction(function () use ($visit, $inputs, $user, $items, &$changed): void {
+            foreach ($inputs as $input) {
                 $item = $items->get((int) $input['id']);
+                $quantity = $input['lrmis_quantity'] === null ? null : (int) $input['lrmis_quantity'];
 
-                if (! $item) {
+                if (! $item || $item->lrmis_quantity === $quantity) {
                     continue;
                 }
 
-                $attributes = collect($input)->only(self::EDITABLE_ITEM_FIELDS)->all();
+                $item->forceFill([
+                    'lrmis_original_quantity' => $item->lrmis_adjusted_at ? $item->lrmis_original_quantity : $item->lrmis_quantity,
+                    'lrmis_quantity' => $quantity,
+                    'lrmis_adjusted_by' => $user->id,
+                    'lrmis_adjusted_at' => now(),
+                ])->save();
+                $changed++;
 
-                if (in_array($item->section, self::SECTIONS_WITH_EDITABLE_REFERENCE, true) && array_key_exists('reference_quantity', $input)) {
-                    $attributes['reference_quantity'] = $input['reference_quantity'];
-                }
+                $grades = ValidLrTemplate::lrmisGradesFor((string) $item->group_label);
 
-                if ($item->section === ValidLrVisitItem::SECTION_ARAL && is_array($input['extra'] ?? null)) {
-                    $attributes['extra'] = collect($input['extra'])
-                        ->only(array_keys(ValidLrVisitItem::ARAL_PROGRAMS))
-                        ->map(fn (mixed $value): ?int => $value === null || $value === '' ? null : (int) $value)
-                        ->all();
-                }
-
-                $item->fill($attributes);
-
-                if ($item->isDirty()) {
-                    $item->save();
+                if (count($grades) === 1 && $quantity !== null) {
+                    $visit->validLrSchool->lrmisCounts()->updateOrCreate(
+                        ['grade_level' => $grades[0], 'learning_area' => $item->label],
+                        ['total' => $quantity],
+                    );
                 }
             }
         });
 
-        return $visit->refresh();
+        return $changed;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $inputs
+     * @param  array<int, string>  $editableFields
+     */
+    private function updateItems(ValidLrVisit $visit, array $inputs, array $editableFields): void
+    {
+        $items = $visit->items()->get()->keyBy('id');
+
+        foreach ($inputs as $input) {
+            $item = $items->get((int) $input['id']);
+
+            if (! $item) {
+                continue;
+            }
+
+            $attributes = collect($input)->only($editableFields)->all();
+
+            if (in_array($item->section, self::SECTIONS_WITH_EDITABLE_REFERENCE, true) && array_key_exists('reference_quantity', $input)) {
+                $attributes['reference_quantity'] = $input['reference_quantity'];
+            }
+
+            if ($item->section === ValidLrVisitItem::SECTION_ARAL && is_array($input['extra'] ?? null)) {
+                $attributes['extra'] = collect($input['extra'])
+                    ->only(array_keys(ValidLrVisitItem::ARAL_PROGRAMS))
+                    ->map(fn (mixed $value): ?int => $value === null || $value === '' ? null : (int) $value)
+                    ->all();
+            }
+
+            $item->fill($attributes);
+
+            if ($item->isDirty()) {
+                $item->save();
+            }
+        }
     }
 }

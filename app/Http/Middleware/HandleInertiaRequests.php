@@ -43,6 +43,12 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'branding' => app(AppSettingsService::class)->branding(),
+            'recaptcha' => fn (): array => [
+                'enabled' => app(AppSettingsService::class)->recaptchaActive(),
+                'site_key' => app(AppSettingsService::class)->recaptchaActive()
+                    ? app(AppSettingsService::class)->recaptcha()['recaptcha_site_key']
+                    : null,
+            ],
             'auth' => [
                 'user' => $user,
             ],

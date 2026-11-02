@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 class SchoolActivationService
 {
     /**
-     * @param  array{school_head: string, librarian?: string|null, property_custodian?: string|null, email: string, primary_mobile_no?: string|null, secondary_mobile_no?: string|null, municipality_id?: int|null, district_id?: int|null, barangay_id?: int|null}  $payload
+     * @param  array{school_head: string, librarian?: string|null, property_custodian?: string|null, lr_designate?: string|null, ict_coordinator?: string|null, math_coordinator?: string|null, science_coordinator?: string|null, email: string, primary_mobile_no?: string|null, secondary_mobile_no?: string|null, municipality_id?: int|null, district_id?: int|null, barangay_id?: int|null}  $payload
      * @return array{user: User, password: string}
      */
     public function activate(School $school, array $payload): array
@@ -41,6 +41,10 @@ class SchoolActivationService
                 'school_head' => $payload['school_head'],
                 'librarian' => $payload['librarian'] ?? null,
                 'property_custodian' => $payload['property_custodian'] ?? null,
+                'lr_designate' => $payload['lr_designate'] ?? null,
+                'ict_coordinator' => $payload['ict_coordinator'] ?? null,
+                'math_coordinator' => $payload['math_coordinator'] ?? null,
+                'science_coordinator' => $payload['science_coordinator'] ?? null,
                 'primary_mobile_no' => $payload['primary_mobile_no'] ?? null,
                 'secondary_mobile_no' => $payload['secondary_mobile_no'] ?? null,
                 'email' => $payload['email'],

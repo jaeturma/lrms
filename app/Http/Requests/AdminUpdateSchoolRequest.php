@@ -45,6 +45,10 @@ class AdminUpdateSchoolRequest extends FormRequest
             'school_head' => ['nullable', 'string', 'max:255'],
             'librarian' => ['nullable', 'string', 'max:255'],
             'property_custodian' => ['nullable', 'string', 'max:255'],
+            'lr_designate' => ['nullable', 'string', 'max:255'],
+            'ict_coordinator' => ['nullable', 'string', 'max:255'],
+            'math_coordinator' => ['nullable', 'string', 'max:255'],
+            'science_coordinator' => ['nullable', 'string', 'max:255'],
             'primary_mobile_no' => ['nullable', 'string', 'max:30'],
             'secondary_mobile_no' => ['nullable', 'string', 'max:30'],
             'email' => [

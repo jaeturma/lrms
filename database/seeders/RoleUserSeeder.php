@@ -30,7 +30,7 @@ class RoleUserSeeder extends Seeder
                 ['email' => $user['email']],
                 [
                     'name' => $user['name'],
-                    'password' => Hash::make('Pass1234'),
+                    'password' => Hash::make('Pass1234!'),
                     'role' => $user['role'],
                     'school_id' => null,
                     'email_verified_at' => now(),

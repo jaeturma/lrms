@@ -41,6 +41,10 @@ export default function AdminSchoolCreate({ schoolTypes, districts, municipaliti
         barangay_id: '',
         school_head: '',
         librarian: '',
+        lr_designate: '',
+        ict_coordinator: '',
+        math_coordinator: '',
+        science_coordinator: '',
         property_custodian: '',
         primary_mobile_no: '',
         secondary_mobile_no: '',
@@ -200,6 +204,38 @@ export default function AdminSchoolCreate({ schoolTypes, districts, municipaliti
                                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                                 value={data.librarian}
                                 onChange={(event) => setData('librarian', event.target.value)}
+                            />
+                        </Field>
+
+                        <Field label="LR Designate" error={errors.lr_designate}>
+                            <input
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.lr_designate}
+                                onChange={(event) => setData('lr_designate', event.target.value)}
+                            />
+                        </Field>
+
+                        <Field label="ICT Coordinator" error={errors.ict_coordinator}>
+                            <input
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.ict_coordinator}
+                                onChange={(event) => setData('ict_coordinator', event.target.value)}
+                            />
+                        </Field>
+
+                        <Field label="Math Coordinator" error={errors.math_coordinator}>
+                            <input
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.math_coordinator}
+                                onChange={(event) => setData('math_coordinator', event.target.value)}
+                            />
+                        </Field>
+
+                        <Field label="Science Coordinator" error={errors.science_coordinator}>
+                            <input
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                value={data.science_coordinator}
+                                onChange={(event) => setData('science_coordinator', event.target.value)}
                             />
                         </Field>
 

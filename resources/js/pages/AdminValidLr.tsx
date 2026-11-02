@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { ClipboardCheck, Search } from 'lucide-react';
+import { ClipboardCheck, FileBarChart, Radio, Search } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { EmptyTableRow } from '@/components/empty-state';
@@ -162,6 +162,22 @@ export default function AdminValidLr({
                         iconClassName="bg-teal-100 text-teal-600 dark:bg-teal-900/60 dark:text-teal-300"
                         title="VALID-LR Monitoring"
                         description="Validation and inventory of delivered learning resources, SME and TVL packages. Enter a School ID to load its allocation, LRMIS, SME and TVL records, then record a monitoring visit."
+                        actions={
+                            <>
+                                <Button variant="outline" asChild>
+                                    <Link href="/app/admin/valid-lr/board">
+                                        <Radio className="mr-1 h-4 w-4" />
+                                        Live Board
+                                    </Link>
+                                </Button>
+                                <Button variant="outline" asChild>
+                                    <Link href="/app/admin/valid-lr/report">
+                                        <FileBarChart className="mr-1 h-4 w-4" />
+                                        Monitoring Report
+                                    </Link>
+                                </Button>
+                            </>
+                        }
                     />
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">

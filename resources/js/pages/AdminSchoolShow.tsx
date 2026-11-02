@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/page-header';
 type School = {
     school_id: string;
     school_name: string;
+    logo_url?: string | null;
     school_type?: string | null;
     district?: string | null;
     municipality?: string | null;
@@ -14,6 +15,10 @@ type School = {
     school_head?: string | null;
     property_custodian?: string | null;
     librarian?: string | null;
+    lr_designate?: string | null;
+    ict_coordinator?: string | null;
+    math_coordinator?: string | null;
+    science_coordinator?: string | null;
     primary_mobile_no?: string | null;
     secondary_mobile_no?: string | null;
     email?: string | null;
@@ -156,7 +161,12 @@ export default function AdminSchoolShow({
                     )}
 
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <h2 className="mb-4 text-lg font-semibold text-foreground">School Details</h2>
+                        <div className="mb-4 flex items-center gap-3">
+                            {school.logo_url && (
+                                <img src={school.logo_url} alt="School logo" className="size-12 rounded-lg border border-border object-contain" />
+                            )}
+                            <h2 className="text-lg font-semibold text-foreground">School Details</h2>
+                        </div>
                         <div className="grid gap-3 text-sm text-foreground md:grid-cols-3">
                             <Detail label="School Name" value={school.school_name} />
                             <Detail label="School ID" value={school.school_id} />
@@ -166,6 +176,10 @@ export default function AdminSchoolShow({
                             <Detail label="School Head" value={school.school_head} />
                             <Detail label="Property Custodian" value={school.property_custodian} />
                             <Detail label="Librarian" value={school.librarian} />
+                            <Detail label="LR Designate" value={school.lr_designate} />
+                            <Detail label="ICT Coordinator" value={school.ict_coordinator} />
+                            <Detail label="Math Coordinator" value={school.math_coordinator} />
+                            <Detail label="Science Coordinator" value={school.science_coordinator} />
                             <Detail label="Primary Mobile No." value={school.primary_mobile_no} />
                             <Detail label="Secondary No." value={school.secondary_mobile_no} />
                             <Detail label="Email" value={school.email} />

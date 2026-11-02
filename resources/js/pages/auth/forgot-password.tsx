@@ -1,7 +1,9 @@
 import { Head, useForm } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
 import type { FormEvent } from 'react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
+import { RecaptchaField } from '@/components/recaptcha-field';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,13 +11,17 @@ import { Label } from '@/components/ui/label';
 import { login } from '@/routes';
 
 export default function ForgotPassword({ status }: { status?: string }) {
+    const [attempts, setAttempts] = useState(0);
     const { data, setData, post, processing, errors } = useForm({
         email: '',
+        'g-recaptcha-response': '',
     });
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
-        post('/forgot-password');
+        post('/forgot-password', {
+            onFinish: () => setAttempts((count) => count + 1),
+        });
     };
 
     return (
@@ -48,6 +54,16 @@ export default function ForgotPassword({ status }: { status?: string }) {
                         />
 
                         <InputError message={errors.email} />
+                    </div>
+
+                    <div className="mt-4">
+                        <RecaptchaField
+                            error={errors['g-recaptcha-response']}
+                            resetKey={attempts}
+                            onToken={(token) =>
+                                setData('g-recaptcha-response', token)
+                            }
+                        />
                     </div>
 
                     <div className="my-6 flex items-center justify-start">

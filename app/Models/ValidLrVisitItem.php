@@ -47,8 +47,12 @@ class ValidLrVisitItem extends Model
         'procurement_source',
         'reference_quantity',
         'lrmis_quantity',
+        'lrmis_original_quantity',
+        'lrmis_adjusted_by',
+        'lrmis_adjusted_at',
         'lrms_quantity',
         'distributed_quantity',
+        'school_quantity',
         'actual_quantity',
         'enrolment',
         'year_received',
@@ -65,13 +69,21 @@ class ValidLrVisitItem extends Model
             'sort_order' => 'integer',
             'reference_quantity' => 'integer',
             'lrmis_quantity' => 'integer',
+            'lrmis_original_quantity' => 'integer',
+            'lrmis_adjusted_at' => 'datetime',
             'lrms_quantity' => 'integer',
             'distributed_quantity' => 'integer',
+            'school_quantity' => 'integer',
             'actual_quantity' => 'integer',
             'enrolment' => 'integer',
             'mov' => 'array',
             'extra' => 'array',
         ];
+    }
+
+    public function lrmisAdjuster(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'lrmis_adjusted_by');
     }
 
     public function visit(): BelongsTo

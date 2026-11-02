@@ -17,7 +17,7 @@ class AdminUserSeeder extends Seeder
             ['email' => 'admin@lrms.com'],
             [
                 'name' => 'System Administrator',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('Pass1234!'),
                 'role' => 'admin',
                 'school_id' => null,
                 'email_verified_at' => now(),

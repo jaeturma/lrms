@@ -10,11 +10,30 @@ export type UseAppearanceReturn = {
     readonly colorTheme: ColorTheme;
     readonly updateAppearance: (mode: Appearance) => void;
     readonly updateColorTheme: (theme: ColorTheme) => void;
+    readonly resetColorTheme: () => void;
+    readonly hasCustomColorTheme: boolean;
 };
+
+const COLOR_THEMES: ColorTheme[] = [
+    'slate',
+    'ocean',
+    'forest',
+    'sunset',
+    'rose',
+];
 
 const listeners = new Set<() => void>();
 let currentAppearance: Appearance = 'system';
 let currentColorTheme: ColorTheme = 'slate';
+let systemColorTheme: ColorTheme = 'slate';
+
+/**
+ * A user's own color theme (picked under Settings → Appearance) overrides
+ * the system theme set by an admin in App Settings.
+ */
+const hasCustomColorTheme = (): boolean =>
+    typeof window !== 'undefined' &&
+    localStorage.getItem('colorThemeCustom') === '1';
 
 const prefersDark = (): boolean => {
     if (typeof window === 'undefined') {
@@ -46,7 +65,13 @@ const getStoredColorTheme = (): ColorTheme => {
         return 'slate';
     }
 
-    return (localStorage.getItem('colorTheme') as ColorTheme) || 'slate';
+    if (!hasCustomColorTheme()) {
+        return systemColorTheme;
+    }
+
+    return (
+        (localStorage.getItem('colorTheme') as ColorTheme) || systemColorTheme
+    );
 };
 
 const isDarkMode = (appearance: Appearance): boolean => {
@@ -114,6 +139,26 @@ export function initializeTheme(): void {
     mediaQuery()?.addEventListener('change', handleSystemThemeChange);
 }
 
+/**
+ * Applies the admin-chosen system color theme unless the user picked their
+ * own. Called with the shared `branding.color_theme` prop on every visit.
+ */
+export function applySystemColorTheme(theme?: string | null): void {
+    if (!theme || !COLOR_THEMES.includes(theme as ColorTheme)) {
+        return;
+    }
+
+    systemColorTheme = theme as ColorTheme;
+
+    if (hasCustomColorTheme() || currentColorTheme === systemColorTheme) {
+        return;
+    }
+
+    currentColorTheme = systemColorTheme;
+    applyColorTheme(currentColorTheme);
+    notify();
+}
+
 export function useAppearance(): UseAppearanceReturn {
     const appearance: Appearance = useSyncExternalStore(
         subscribe,
@@ -140,10 +185,18 @@ export function useAppearance(): UseAppearanceReturn {
         notify();
     };
 
+    const resetColorTheme = (): void => {
+        localStorage.removeItem('colorThemeCustom');
+        currentColorTheme = systemColorTheme;
+        applyColorTheme(currentColorTheme);
+        notify();
+    };
+
     const updateColorTheme = (theme: ColorTheme): void => {
         currentColorTheme = theme;
 
         localStorage.setItem('colorTheme', theme);
+        localStorage.setItem('colorThemeCustom', '1');
         setCookie('colorTheme', theme);
 
         applyColorTheme(theme);
@@ -156,5 +209,7 @@ export function useAppearance(): UseAppearanceReturn {
         colorTheme,
         updateAppearance,
         updateColorTheme,
+        resetColorTheme,
+        hasCustomColorTheme: hasCustomColorTheme(),
     } as const;
 }

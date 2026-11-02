@@ -8,12 +8,34 @@ use Illuminate\Support\Facades\Crypt;
 
 class AppSettingsService
 {
+    /**
+     * Color theme presets defined in resources/css/app.css.
+     *
+     * @var array<string, string>
+     */
+    public const COLOR_THEMES = [
+        'slate' => 'DepEd Blue',
+        'ocean' => 'Ocean',
+        'forest' => 'Forest',
+        'sunset' => 'Sunset',
+        'rose' => 'Rose',
+    ];
+
     /** @var array<int, string> */
     private const BRANDING_KEYS = [
         'login_title',
         'login_logo_url',
         'app_title',
         'app_logo_url',
+        'website_logo_url',
+        'color_theme',
+    ];
+
+    /** @var array<int, string> */
+    private const RECAPTCHA_KEYS = [
+        'recaptcha_enabled',
+        'recaptcha_site_key',
+        'recaptcha_secret_encrypted',
     ];
 
     /** @var array<int, string> */
@@ -40,7 +62,39 @@ class AppSettingsService
             'login_logo_url' => $values->get('login_logo_url'),
             'app_title' => $values->get('app_title') ?: config('app.name', 'LRMS'),
             'app_logo_url' => $values->get('app_logo_url'),
+            'website_logo_url' => $values->get('website_logo_url'),
+            'color_theme' => array_key_exists((string) $values->get('color_theme'), self::COLOR_THEMES)
+                ? (string) $values->get('color_theme')
+                : 'slate',
         ];
+    }
+
+    /**
+     * Google reCAPTCHA v2 ("I'm not a robot") settings. The secret key never
+     * leaves the server; pages only learn whether it is set.
+     *
+     * @return array{recaptcha_enabled: bool, recaptcha_site_key: ?string, recaptcha_secret_key: ?string}
+     */
+    public function recaptcha(): array
+    {
+        $values = AppSetting::valuesFor(self::RECAPTCHA_KEYS);
+
+        return [
+            'recaptcha_enabled' => $values->get('recaptcha_enabled') === '1',
+            'recaptcha_site_key' => $values->get('recaptcha_site_key'),
+            'recaptcha_secret_key' => $this->decryptNullable($values->get('recaptcha_secret_encrypted')),
+        ];
+    }
+
+    /**
+     * Whether login and password-reset forms must pass reCAPTCHA: enabled
+     * and both keys configured.
+     */
+    public function recaptchaActive(): bool
+    {
+        $recaptcha = $this->recaptcha();
+
+        return $recaptcha['recaptcha_enabled'] && filled($recaptcha['recaptcha_site_key']) && filled($recaptcha['recaptcha_secret_key']);
     }
 
     /**
@@ -99,6 +153,10 @@ class AppSettingsService
             'login_logo_url' => $this->toNullableString($data['login_logo_url'] ?? null),
             'app_title' => (string) ($data['app_title'] ?? ''),
             'app_logo_url' => $this->toNullableString($data['app_logo_url'] ?? null),
+            'website_logo_url' => $this->toNullableString($data['website_logo_url'] ?? null),
+            'color_theme' => array_key_exists((string) ($data['color_theme'] ?? ''), self::COLOR_THEMES) ? (string) $data['color_theme'] : 'slate',
+            'recaptcha_enabled' => ! empty($data['recaptcha_enabled']) ? '1' : '0',
+            'recaptcha_site_key' => $this->toNullableString($data['recaptcha_site_key'] ?? null),
             'smtp_enabled' => ! empty($data['smtp_enabled']) ? '1' : '0',
             'smtp_host' => $this->toNullableString($data['smtp_host'] ?? null),
             'smtp_port' => $this->toNullableString($data['smtp_port'] ?? null),
@@ -117,6 +175,14 @@ class AppSettingsService
             AppSetting::query()->updateOrCreate(
                 ['key' => 'smtp_password_encrypted'],
                 ['value' => Crypt::encryptString($smtpPassword)],
+            );
+        }
+
+        $recaptchaSecret = $this->toNullableString($data['recaptcha_secret_key'] ?? null);
+        if ($recaptchaSecret !== null) {
+            AppSetting::query()->updateOrCreate(
+                ['key' => 'recaptcha_secret_encrypted'],
+                ['value' => Crypt::encryptString($recaptchaSecret)],
             );
         }
     }

@@ -32,6 +32,7 @@ type FindSchoolResponse = {
 type Branding = {
     login_logo_url?: string | null;
     app_logo_url?: string | null;
+    website_logo_url?: string | null;
 };
 
 const COVERAGE = [
@@ -86,7 +87,9 @@ export default function HomePage() {
     const [loading, setLoading] = useState(false);
     const [logoFailed, setLogoFailed] = useState(false);
     const logoUrl = resolveBrandingImageUrl(
-        branding?.login_logo_url ?? branding?.app_logo_url,
+        branding?.website_logo_url ??
+            branding?.login_logo_url ??
+            branding?.app_logo_url,
     );
 
     const handleContinue = async (event: FormEvent<HTMLFormElement>) => {
@@ -125,10 +128,10 @@ export default function HomePage() {
         <>
             <Head title="Learning Resources Monitoring System" />
 
-            <div className="relative overflow-hidden">
+            <div className="landing-surface relative min-h-screen overflow-hidden">
                 <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-                    <div className="absolute -top-32 -left-24 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
-                    <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-amber-400/10 blur-3xl" />
+                    <div className="absolute -top-32 -left-24 h-96 w-96 rounded-full bg-primary/5 blur-3xl" />
+                    <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-amber-400/5 blur-3xl" />
                     <div
                         className="absolute inset-0 opacity-[0.35] dark:opacity-[0.15]"
                         style={{

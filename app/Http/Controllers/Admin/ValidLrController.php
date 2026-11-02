@@ -85,12 +85,15 @@ class ValidLrController extends Controller
                 'visits' => ValidLrVisit::query()->count(),
             ],
             'canImport' => in_array($request->user()?->role, ['admin', 'superadmin', 'sysadmin', 'ito'], true),
+            'canSchedule' => ValidLrVisit::canSchedule($request->user()),
         ]);
     }
 
-    public function show(ValidLrSchool $validLrSchool, ValidLrSchoolProfileService $profileService): Response
+    public function show(Request $request, ValidLrSchool $validLrSchool, ValidLrSchoolProfileService $profileService): Response
     {
-        $validLrSchool->load('school:id,school_id,school_name');
+        $validLrSchool->load('school');
+        $openVisit = $validLrSchool->visits()->with('teamLeader:id,name')->where('status', '!=', 'completed')->latest('id')->first();
+        $canSchedule = ValidLrVisit::canSchedule($request->user());
 
         return Inertia::render('AdminValidLrSchool', [
             'school' => [
@@ -107,7 +110,22 @@ class ValidLrController extends Controller
                     'school_id' => $validLrSchool->school->school_id,
                     'school_name' => $validLrSchool->school->school_name,
                 ] : null,
+                'personnel' => collect(ValidLrVisit::PERSONNEL)
+                    ->map(fn (string $label, string $field): ?string => $validLrSchool->school?->{$field} ?: null)
+                    ->all(),
             ],
+            'personnelLabels' => ValidLrVisit::PERSONNEL,
+            'openVisit' => $openVisit ? [
+                'id' => $openVisit->id,
+                'stage' => $openVisit->stage(),
+                'team_leader_id' => $openVisit->team_leader_id,
+                'team_leader' => $openVisit->teamLeader?->name,
+                'scheduled_at' => $openVisit->scheduled_at?->format('Y-m-d\TH:i'),
+                'monitoring_team' => $openVisit->monitoring_team,
+            ] : null,
+            'stages' => ValidLrVisit::STAGES,
+            'canSchedule' => $canSchedule,
+            'teamLeaders' => $canSchedule ? ValidLrVisit::teamLeaderOptions() : [],
             'profile' => $profileService->build($validLrSchool),
             'visits' => $validLrSchool->visits()
                 ->with('user:id,name')
@@ -116,6 +134,7 @@ class ValidLrController extends Controller
                 ->map(fn (ValidLrVisit $visit): array => [
                     'id' => $visit->id,
                     'status' => $visit->status,
+                    'stage' => $visit->stage(),
                     'visited_at' => $visit->visited_at?->toDateTimeString(),
                     'monitor' => $visit->user?->name,
                     'monitoring_team' => $visit->monitoring_team,
