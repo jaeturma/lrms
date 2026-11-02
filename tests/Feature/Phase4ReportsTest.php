@@ -6,8 +6,10 @@ use App\Models\GradeLevel;
 use App\Models\IctEquipment;
 use App\Models\LearningResource;
 use App\Models\Municipality;
+use App\Models\OtherEquipment;
 use App\Models\School;
 use App\Models\SchoolYear;
+use App\Models\Sme;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -185,6 +187,53 @@ test('ict equipment summary can be exported as csv', function () {
 
     expect($csv)->toContain('Equipment Export School');
     expect($csv)->toContain('Laptop,Good,Available,2');
+});
+
+test('admin sees learner-to-equipment ratio, sme lab adequacy, functional status, and district heatmap', function () {
+    $admin = User::factory()->admin()->create();
+    $schoolYear = SchoolYear::factory()->active()->create();
+
+    $school = createReportsSchool(['school_name' => 'Aggregate Metrics School']);
+
+    seedReportsEnrollment($school, $schoolYear, 30, 20);
+
+    LearningResource::factory()->create(['school_id' => $school->id, 'quantity_delivered' => 40]);
+
+    IctEquipment::factory()->count(2)->create(['school_id' => $school->id, 'status' => 'Available']);
+    IctEquipment::factory()->create(['school_id' => $school->id, 'status' => 'Missing']);
+
+    Sme::factory()->create(['school_id' => $school->id, 'category' => 'Science', 'condition' => 'Good', 'status' => 'Available']);
+    Sme::factory()->create(['school_id' => $school->id, 'category' => 'Mathematics', 'condition' => 'Good', 'status' => 'Available']);
+
+    OtherEquipment::factory()->create(['school_id' => $school->id, 'status' => 'Condemned']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.reports.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('AdminReports')
+            ->has('learnerEquipmentRatio', 1)
+            ->where('learnerEquipmentRatio.0.municipality', $school->municipality->name)
+            ->where('learnerEquipmentRatio.0.learners', 50)
+            ->where('learnerEquipmentRatio.0.equipment', 6)
+            ->where('learnerEquipmentRatio.0.ratio', 8.3)
+            ->has('smeLabAdequacy', 1)
+            ->where('smeLabAdequacy.0.adequate', 1)
+            ->where('smeLabAdequacy.0.total', 1)
+            ->has('equipmentFunctionalStatus', 3)
+            ->where('equipmentFunctionalStatus.0.type', 'ICT Equipment')
+            ->where('equipmentFunctionalStatus.0.functional', 2)
+            ->where('equipmentFunctionalStatus.0.non_functional', 1)
+            ->where('equipmentFunctionalStatus.1.type', 'Science & Math')
+            ->where('equipmentFunctionalStatus.1.functional', 2)
+            ->where('equipmentFunctionalStatus.1.non_functional', 0)
+            ->where('equipmentFunctionalStatus.2.type', 'Other Equipment')
+            ->where('equipmentFunctionalStatus.2.functional', 0)
+            ->where('equipmentFunctionalStatus.2.non_functional', 1)
+            ->where('districtResourceHeatmap.districts.0', $school->district->name)
+            ->where('districtResourceHeatmap.resourceTypes', ['Printed Resources', 'ICT Equipment', 'Science & Math', 'Other Equipment'])
+            ->where('districtResourceHeatmap.values.0', [40, 3, 2, 1])
+        );
 });
 
 test('school users cannot access reports or exports', function () {

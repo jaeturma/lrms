@@ -131,6 +131,18 @@ test('dashboard aggregates reflect collected data', function () {
             ->where('defectRateByMunicipality.0.rate', 10)
             ->has('pendingActivations', 1)
             ->where('pendingActivations.0.school_id', $pendingSchool->school_id)
+            ->where('learnerEquipmentRatio.0.municipality', 'Maco')
+            ->where('learnerEquipmentRatio.0.learners', 100)
+            ->where('learnerEquipmentRatio.0.equipment', 2)
+            ->where('learnerEquipmentRatio.0.ratio', 50)
+            ->where('smeLabAdequacy.0.municipality', 'Maco')
+            ->where('smeLabAdequacy.0.adequate', 0)
+            ->where('smeLabAdequacy.0.total', 2)
+            ->where('equipmentFunctionalStatus.0.type', 'ICT Equipment')
+            ->where('equipmentFunctionalStatus.0.functional', 2)
+            ->where('equipmentFunctionalStatus.0.non_functional', 0)
+            ->where('districtResourceHeatmap.districts.0', $district->name)
+            ->where('districtResourceHeatmap.values.0', [50, 2, 0, 0])
         );
 });
 

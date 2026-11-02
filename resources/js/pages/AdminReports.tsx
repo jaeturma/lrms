@@ -1,8 +1,11 @@
 import { Head } from '@inertiajs/react';
 import { ChartColumn } from 'lucide-react';
 import { ChartCard } from '@/components/charts/chart-card';
+import { DivergingStackedBar } from '@/components/charts/diverging-stacked-bar';
 import { EmptyChart } from '@/components/charts/empty-chart';
 import { GroupedColumnChart } from '@/components/charts/grouped-column-chart';
+import { HProgressBars } from '@/components/charts/h-progress-bars';
+import { Heatmap } from '@/components/charts/heatmap';
 import { EmptyTableRow } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 
@@ -48,16 +51,51 @@ type Props = {
     otherEquipmentByCategory: CategoryRow[];
     otherEquipmentByStatus: Record<string, number>;
     equipmentConditions: string[];
+    learnerEquipmentRatio: Array<{
+        municipality: string;
+        learners: number;
+        equipment: number;
+        ratio: number | null;
+    }>;
+    smeLabAdequacy: Array<{
+        municipality: string;
+        adequate: number;
+        total: number;
+    }>;
+    equipmentFunctionalStatus: Array<{
+        type: string;
+        functional: number;
+        non_functional: number;
+    }>;
+    districtResourceHeatmap: {
+        districts: string[];
+        resourceTypes: string[];
+        values: number[][];
+    };
 };
 
-const CHART_SERIES_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
+const CHART_SERIES_COLORS = [
+    'var(--chart-1)',
+    'var(--chart-2)',
+    'var(--chart-3)',
+    'var(--chart-4)',
+    'var(--chart-5)',
+];
 
 function exportUrl(path: string, filters: Props['filters']): string {
     const params = new URLSearchParams();
 
-    if (filters.school_year_id) params.set('school_year_id', String(filters.school_year_id));
-    if (filters.district_id) params.set('district_id', String(filters.district_id));
-    if (filters.municipality_id) params.set('municipality_id', String(filters.municipality_id));
+    if (filters.school_year_id) {
+        params.set('school_year_id', String(filters.school_year_id));
+    }
+
+    if (filters.district_id) {
+        params.set('district_id', String(filters.district_id));
+    }
+
+    if (filters.municipality_id) {
+        params.set('municipality_id', String(filters.municipality_id));
+    }
 
     const query = params.toString();
 
@@ -76,8 +114,14 @@ export default function AdminReports({
     otherEquipmentByCategory,
     otherEquipmentByStatus,
     equipmentConditions,
+    learnerEquipmentRatio,
+    smeLabAdequacy,
+    equipmentFunctionalStatus,
+    districtResourceHeatmap,
 }: Props) {
-    const selectedSchoolYear = schoolYears.find((year) => year.id === filters.school_year_id);
+    const selectedSchoolYear = schoolYears.find(
+        (year) => year.id === filters.school_year_id,
+    );
 
     return (
         <>
@@ -92,7 +136,11 @@ export default function AdminReports({
                         description={`Learning resource adequacy and equipment condition summaries across the division${selectedSchoolYear ? ` for SY ${selectedSchoolYear.name}` : ''}.`}
                         align="start"
                     >
-                        <form method="get" action="/app/admin/reports" className="mt-4 flex flex-wrap gap-2">
+                        <form
+                            method="get"
+                            action="/app/admin/reports"
+                            className="mt-4 flex flex-wrap gap-2"
+                        >
                             <select
                                 name="school_year_id"
                                 defaultValue={filters.school_year_id ?? ''}
@@ -112,7 +160,10 @@ export default function AdminReports({
                             >
                                 <option value="">All Districts</option>
                                 {districts.map((district) => (
-                                    <option key={district.id} value={district.id}>
+                                    <option
+                                        key={district.id}
+                                        value={district.id}
+                                    >
                                         {district.name}
                                     </option>
                                 ))}
@@ -124,12 +175,18 @@ export default function AdminReports({
                             >
                                 <option value="">All Municipalities</option>
                                 {municipalities.map((municipality) => (
-                                    <option key={municipality.id} value={municipality.id}>
+                                    <option
+                                        key={municipality.id}
+                                        value={municipality.id}
+                                    >
                                         {municipality.name}
                                     </option>
                                 ))}
                             </select>
-                            <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">
+                            <button
+                                type="submit"
+                                className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground"
+                            >
                                 Filter
                             </button>
                         </form>
@@ -138,13 +195,19 @@ export default function AdminReports({
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                             <div>
-                                <h2 className="text-lg font-semibold text-foreground">Learning Resource Adequacy</h2>
+                                <h2 className="text-lg font-semibold text-foreground">
+                                    Learning Resource Adequacy
+                                </h2>
                                 <p className="text-sm text-muted-foreground">
-                                    Copies available in school inventories compared against enrollment.
+                                    Copies available in school inventories
+                                    compared against enrollment.
                                 </p>
                             </div>
                             <a
-                                href={exportUrl('/app/admin/reports/learning-resources/export', filters)}
+                                href={exportUrl(
+                                    '/app/admin/reports/learning-resources/export',
+                                    filters,
+                                )}
                                 className="h-9 rounded-md border border-border bg-background px-4 text-sm leading-9 text-foreground hover:bg-muted"
                             >
                                 Export CSV
@@ -153,15 +216,21 @@ export default function AdminReports({
 
                         <div className="mb-4 flex flex-wrap gap-2 text-xs">
                             <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-muted-foreground">
-                                <span className="font-semibold text-foreground">{resourceSummary.total_learners.toLocaleString()}</span>
+                                <span className="font-semibold text-foreground">
+                                    {resourceSummary.total_learners.toLocaleString()}
+                                </span>
                                 learners
                             </span>
                             <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-muted-foreground">
-                                <span className="font-semibold text-foreground">{resourceSummary.total_available.toLocaleString()}</span>
+                                <span className="font-semibold text-foreground">
+                                    {resourceSummary.total_available.toLocaleString()}
+                                </span>
                                 available copies
                             </span>
                             <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-muted-foreground">
-                                <span className="font-semibold text-foreground">{resourceSummary.schools_in_shortage.toLocaleString()}</span>
+                                <span className="font-semibold text-foreground">
+                                    {resourceSummary.schools_in_shortage.toLocaleString()}
+                                </span>
                                 schools in shortage
                             </span>
                         </div>
@@ -172,23 +241,47 @@ export default function AdminReports({
                                     <tr>
                                         <th className="px-3 py-2">School</th>
                                         <th className="px-3 py-2">District</th>
-                                        <th className="px-3 py-2">Municipality</th>
-                                        <th className="px-3 py-2 text-right">Learners</th>
-                                        <th className="px-3 py-2 text-right">Available Copies</th>
-                                        <th className="px-3 py-2 text-right">Copies / Learner</th>
-                                        <th className="px-3 py-2 text-right">Shortage</th>
+                                        <th className="px-3 py-2">
+                                            Municipality
+                                        </th>
+                                        <th className="px-3 py-2 text-right">
+                                            Learners
+                                        </th>
+                                        <th className="px-3 py-2 text-right">
+                                            Available Copies
+                                        </th>
+                                        <th className="px-3 py-2 text-right">
+                                            Copies / Learner
+                                        </th>
+                                        <th className="px-3 py-2 text-right">
+                                            Shortage
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {resourceAdequacy.length === 0 && (
-                                        <EmptyTableRow colSpan={7} message="No schools found for the selected filters." />
+                                        <EmptyTableRow
+                                            colSpan={7}
+                                            message="No schools found for the selected filters."
+                                        />
                                     )}
                                     {resourceAdequacy.map((row) => (
-                                        <tr key={row.school_id} className="border-t border-border">
-                                            <td className="px-3 py-2 font-medium text-foreground">{row.school_name}</td>
-                                            <td className="px-3 py-2 text-muted-foreground">{row.district ?? '-'}</td>
-                                            <td className="px-3 py-2 text-muted-foreground">{row.municipality ?? '-'}</td>
-                                            <td className="px-3 py-2 text-right text-muted-foreground">{row.learners.toLocaleString()}</td>
+                                        <tr
+                                            key={row.school_id}
+                                            className="border-t border-border"
+                                        >
+                                            <td className="px-3 py-2 font-medium text-foreground">
+                                                {row.school_name}
+                                            </td>
+                                            <td className="px-3 py-2 text-muted-foreground">
+                                                {row.district ?? '-'}
+                                            </td>
+                                            <td className="px-3 py-2 text-muted-foreground">
+                                                {row.municipality ?? '-'}
+                                            </td>
+                                            <td className="px-3 py-2 text-right text-muted-foreground">
+                                                {row.learners.toLocaleString()}
+                                            </td>
                                             <td className="px-3 py-2 text-right text-muted-foreground">
                                                 {row.available_copies.toLocaleString()}
                                             </td>
@@ -197,9 +290,13 @@ export default function AdminReports({
                                             </td>
                                             <td className="px-3 py-2 text-right">
                                                 {row.shortage > 0 ? (
-                                                    <span className="font-semibold text-destructive">{row.shortage.toLocaleString()}</span>
+                                                    <span className="font-semibold text-destructive">
+                                                        {row.shortage.toLocaleString()}
+                                                    </span>
                                                 ) : (
-                                                    <span className="text-muted-foreground">-</span>
+                                                    <span className="text-muted-foreground">
+                                                        -
+                                                    </span>
                                                 )}
                                             </td>
                                         </tr>
@@ -212,7 +309,10 @@ export default function AdminReports({
                     <EquipmentConditionSummary
                         title="ICT Equipment Condition Summary"
                         description="Registered ICT equipment grouped by category and physical condition."
-                        exportHref={exportUrl('/app/admin/reports/ict-equipment/export', filters)}
+                        exportHref={exportUrl(
+                            '/app/admin/reports/ict-equipment/export',
+                            filters,
+                        )}
                         byStatus={ictEquipmentByStatus}
                         byCategory={ictEquipmentByCategory}
                         conditions={equipmentConditions}
@@ -221,11 +321,165 @@ export default function AdminReports({
                     <EquipmentConditionSummary
                         title="Other Equipment Condition Summary"
                         description="Registered TVL, ALS, Library, SPED, Sports, and other equipment grouped by category and physical condition."
-                        exportHref={exportUrl('/app/admin/reports/other-equipment/export', filters)}
+                        exportHref={exportUrl(
+                            '/app/admin/reports/other-equipment/export',
+                            filters,
+                        )}
                         byStatus={otherEquipmentByStatus}
                         byCategory={otherEquipmentByCategory}
                         conditions={equipmentConditions}
                     />
+
+                    <section className="grid gap-4 lg:grid-cols-2">
+                        <ChartCard
+                            title="Learner-to-Equipment Ratio"
+                            subtitle="Combined ICT, Science & Math, and Other Equipment units against enrolled learners, by municipality"
+                            table={{
+                                headers: [
+                                    'Municipality',
+                                    'Learners',
+                                    'Equipment Units',
+                                    'Ratio',
+                                ],
+                                rows: learnerEquipmentRatio.map((row) => [
+                                    row.municipality,
+                                    row.learners,
+                                    row.equipment,
+                                    row.ratio !== null
+                                        ? `1 : ${row.ratio}`
+                                        : '-',
+                                ]),
+                            }}
+                        >
+                            {learnerEquipmentRatio.length > 0 ? (
+                                <HProgressBars
+                                    rows={learnerEquipmentRatio.map((row) => ({
+                                        label: row.municipality,
+                                        value: row.equipment,
+                                        max: row.learners,
+                                        valueText:
+                                            row.ratio !== null
+                                                ? `${row.equipment.toLocaleString()} · 1:${row.ratio}`
+                                                : `${row.equipment.toLocaleString()}`,
+                                    }))}
+                                />
+                            ) : (
+                                <EmptyChart message="No equipment or enrollment on record for the selected filters." />
+                            )}
+                        </ChartCard>
+
+                        <ChartCard
+                            title="Science & Math Laboratory Adequacy"
+                            subtitle="Schools with at least one functional Science AND Mathematics equipment item, by municipality"
+                            table={{
+                                headers: [
+                                    'Municipality',
+                                    'Adequate Schools',
+                                    'Total Schools',
+                                    'Rate',
+                                ],
+                                rows: smeLabAdequacy.map((row) => [
+                                    row.municipality,
+                                    row.adequate,
+                                    row.total,
+                                    `${row.total > 0 ? Math.round((row.adequate / row.total) * 100) : 0}%`,
+                                ]),
+                            }}
+                        >
+                            {smeLabAdequacy.length > 0 ? (
+                                <HProgressBars
+                                    rows={smeLabAdequacy.map((row) => ({
+                                        label: row.municipality,
+                                        value: row.adequate,
+                                        max: row.total,
+                                        valueText: `${row.adequate.toLocaleString()}/${row.total.toLocaleString()}`,
+                                    }))}
+                                />
+                            ) : (
+                                <EmptyChart message="No schools found for the selected filters." />
+                            )}
+                        </ChartCard>
+
+                        <ChartCard
+                            title="Equipment Functional Status"
+                            subtitle="Non-functional (missing/lost/condemned/disposed) to the left, functional (available/in-use/borrowed) to the right"
+                            legend={[
+                                {
+                                    label: 'Non-functional',
+                                    color: 'var(--viz-bad)',
+                                },
+                                {
+                                    label: 'Functional',
+                                    color: 'var(--viz-series-1)',
+                                },
+                            ]}
+                            table={{
+                                headers: [
+                                    'Equipment',
+                                    'Functional',
+                                    'Non-functional',
+                                    'Total',
+                                ],
+                                rows: equipmentFunctionalStatus.map((row) => [
+                                    row.type,
+                                    row.functional,
+                                    row.non_functional,
+                                    row.functional + row.non_functional,
+                                ]),
+                            }}
+                        >
+                            {equipmentFunctionalStatus.some(
+                                (row) =>
+                                    row.functional + row.non_functional > 0,
+                            ) ? (
+                                <DivergingStackedBar
+                                    rows={equipmentFunctionalStatus.map(
+                                        (row) => ({
+                                            label: row.type,
+                                            negative: row.non_functional,
+                                            neutral: 0,
+                                            positive: row.functional,
+                                        }),
+                                    )}
+                                />
+                            ) : (
+                                <EmptyChart message="No equipment found for the selected filters." />
+                            )}
+                        </ChartCard>
+
+                        <ChartCard
+                            title="District-by-District Distribution Heatmap"
+                            subtitle="Printed resource copies delivered and equipment units on record, by district"
+                            table={{
+                                headers: [
+                                    'District',
+                                    ...districtResourceHeatmap.resourceTypes,
+                                ],
+                                rows: districtResourceHeatmap.districts.map(
+                                    (district, index) => [
+                                        district,
+                                        ...(districtResourceHeatmap.values[
+                                            index
+                                        ] ?? []),
+                                    ],
+                                ),
+                            }}
+                        >
+                            {districtResourceHeatmap.districts.length > 0 ? (
+                                <Heatmap
+                                    rowLabels={
+                                        districtResourceHeatmap.districts
+                                    }
+                                    columnLabels={
+                                        districtResourceHeatmap.resourceTypes
+                                    }
+                                    values={districtResourceHeatmap.values}
+                                />
+                            ) : (
+                                <EmptyChart message="No districts found for the selected filters." />
+                            )}
+                        </ChartCard>
+                    </section>
                 </div>
             </main>
         </>
@@ -251,8 +505,12 @@ function EquipmentConditionSummary({
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                    <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-                    <p className="text-sm text-muted-foreground">{description}</p>
+                    <h2 className="text-lg font-semibold text-foreground">
+                        {title}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                        {description}
+                    </p>
                 </div>
                 <a
                     href={exportHref}
@@ -269,7 +527,9 @@ function EquipmentConditionSummary({
                             key={status}
                             className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-muted-foreground"
                         >
-                            <span className="font-semibold text-foreground">{total.toLocaleString()}</span>
+                            <span className="font-semibold text-foreground">
+                                {total.toLocaleString()}
+                            </span>
                             {status}
                         </span>
                     ))}
@@ -280,13 +540,17 @@ function EquipmentConditionSummary({
                 title="By category and condition"
                 legend={conditions.map((condition, index) => ({
                     label: condition,
-                    color: CHART_SERIES_COLORS[index % CHART_SERIES_COLORS.length],
+                    color: CHART_SERIES_COLORS[
+                        index % CHART_SERIES_COLORS.length
+                    ],
                 }))}
                 table={{
                     headers: ['Category', ...conditions, 'Total'],
                     rows: byCategory.map((row) => [
                         row.category,
-                        ...conditions.map((condition) => row.conditions[condition] ?? 0),
+                        ...conditions.map(
+                            (condition) => row.conditions[condition] ?? 0,
+                        ),
                         row.total,
                     ]),
                 }}
@@ -295,11 +559,15 @@ function EquipmentConditionSummary({
                     <GroupedColumnChart
                         data={byCategory.map((row) => ({
                             label: row.category,
-                            values: conditions.map((condition) => row.conditions[condition] ?? 0),
+                            values: conditions.map(
+                                (condition) => row.conditions[condition] ?? 0,
+                            ),
                         }))}
                         series={conditions.map((condition, index) => ({
                             name: condition,
-                            color: CHART_SERIES_COLORS[index % CHART_SERIES_COLORS.length],
+                            color: CHART_SERIES_COLORS[
+                                index % CHART_SERIES_COLORS.length
+                            ],
                         }))}
                     />
                 ) : (

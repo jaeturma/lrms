@@ -27,15 +27,34 @@ type Props = {
  * Chart container: title, optional legend, and a table-view toggle so every
  * value stays reachable without relying on color or hover alone.
  */
-export function ChartCard({ title, subtitle, legend, table, footer, children, className }: Props) {
+export function ChartCard({
+    title,
+    subtitle,
+    legend,
+    table,
+    footer,
+    children,
+    className,
+}: Props) {
     const [showTable, setShowTable] = useState(false);
 
     return (
-        <figure className={cn('flex flex-col rounded-2xl border border-border bg-card p-4 shadow-sm', className)}>
+        <figure
+            className={cn(
+                'flex flex-col rounded-2xl border border-border bg-card p-4 shadow-sm',
+                className,
+            )}
+        >
             <figcaption className="mb-3 flex flex-wrap items-start justify-between gap-2">
                 <div>
-                    <h2 className="text-base font-semibold text-foreground">{title}</h2>
-                    {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
+                    <h2 className="text-base font-semibold text-foreground">
+                        {title}
+                    </h2>
+                    {subtitle && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                            {subtitle}
+                        </p>
+                    )}
                 </div>
                 {table && (
                     <button
@@ -53,8 +72,14 @@ export function ChartCard({ title, subtitle, legend, table, footer, children, cl
             {legend && legend.length > 1 && !showTable && (
                 <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1">
                     {legend.map((item) => (
-                        <span key={item.label} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <span className="size-2.5 rounded-full" style={{ background: item.color }} />
+                        <span
+                            key={item.label}
+                            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+                        >
+                            <span
+                                className="size-2.5 rounded-full"
+                                style={{ background: item.color }}
+                            />
                             {item.label}
                         </span>
                     ))}
@@ -68,7 +93,10 @@ export function ChartCard({ title, subtitle, legend, table, footer, children, cl
                             <thead className="bg-muted text-left text-foreground">
                                 <tr>
                                     {table.headers.map((header) => (
-                                        <th key={header} className="px-3 py-1.5 text-xs font-medium">
+                                        <th
+                                            key={header}
+                                            className="px-3 py-1.5 text-xs font-medium"
+                                        >
                                             {header}
                                         </th>
                                     ))}
@@ -76,16 +104,23 @@ export function ChartCard({ title, subtitle, legend, table, footer, children, cl
                             </thead>
                             <tbody>
                                 {table.rows.map((row, rowIndex) => (
-                                    <tr key={rowIndex} className="border-t border-border">
+                                    <tr
+                                        key={rowIndex}
+                                        className="border-t border-border"
+                                    >
                                         {row.map((cell, cellIndex) => (
                                             <td
                                                 key={cellIndex}
                                                 className={cn(
                                                     'px-3 py-1.5 text-xs',
-                                                    cellIndex === 0 ? 'text-foreground' : 'text-muted-foreground tabular-nums',
+                                                    cellIndex === 0
+                                                        ? 'text-foreground'
+                                                        : 'text-muted-foreground tabular-nums',
                                                 )}
                                             >
-                                                {typeof cell === 'number' ? cell.toLocaleString() : cell}
+                                                {typeof cell === 'number'
+                                                    ? cell.toLocaleString()
+                                                    : cell}
                                             </td>
                                         ))}
                                     </tr>
@@ -98,7 +133,11 @@ export function ChartCard({ title, subtitle, legend, table, footer, children, cl
                 )}
             </div>
 
-            {footer && !showTable && <div className="mt-3 text-xs text-muted-foreground">{footer}</div>}
+            {footer && !showTable && (
+                <div className="mt-3 text-xs text-muted-foreground">
+                    {footer}
+                </div>
+            )}
         </figure>
     );
 }

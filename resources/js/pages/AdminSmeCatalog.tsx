@@ -69,15 +69,22 @@ const emptyForm = (categories: string[]) => ({
     is_active: true,
 });
 
-export default function AdminSmeCatalog({ filters, categories, catalogItems }: Props) {
+export default function AdminSmeCatalog({
+    filters,
+    categories,
+    catalogItems,
+}: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
     const [importError, setImportError] = useState<string | undefined>();
-    const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
+    const [importSummary, setImportSummary] = useState<ImportSummary | null>(
+        null,
+    );
 
-    const { data, setData, post, put, processing, errors, clearErrors } = useForm(emptyForm(categories));
+    const { data, setData, post, put, processing, errors, clearErrors } =
+        useForm(emptyForm(categories));
 
     const openAddDialog = () => {
         setEditingId(null);
@@ -107,7 +114,11 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
             preserveScroll: true,
             onSuccess: () => {
                 setDialogOpen(false);
-                toast.success(editingId === null ? 'SME item added to catalog.' : 'Catalog SME item updated.');
+                toast.success(
+                    editingId === null
+                        ? 'SME item added to catalog.'
+                        : 'Catalog SME item updated.',
+                );
             },
         };
 
@@ -120,7 +131,9 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
 
     const deleteItem = (item: CatalogItem) => {
         if (item.schools_using > 0) {
-            window.alert('This SME item is already used by school records. Deactivate it instead.');
+            window.alert(
+                'This SME item is already used by school records. Deactivate it instead.',
+            );
 
             return;
         }
@@ -151,16 +164,22 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
         formData.append('file', selectedFile);
 
         try {
-            const response = await http.post('/app/admin/sme-catalog/import', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    Accept: 'application/json',
+            const response = await http.post(
+                '/app/admin/sme-catalog/import',
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Accept: 'application/json',
+                    },
                 },
-            });
+            );
 
             setImportSummary(response.data.summary);
         } catch {
-            setImportError('Import failed. Check the template columns and try again.');
+            setImportError(
+                'Import failed. Check the template columns and try again.',
+            );
         } finally {
             setImporting(false);
         }
@@ -188,18 +207,33 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
                     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <h2 className="text-lg font-semibold text-foreground">Import Catalog SME Items</h2>
-                                <p className="text-sm text-muted-foreground">Upload CSV or Excel .xlsx entries for the master SME catalog.</p>
+                                <h2 className="text-lg font-semibold text-foreground">
+                                    Import Catalog SME Items
+                                </h2>
+                                <p className="text-sm text-muted-foreground">
+                                    Upload CSV or Excel .xlsx entries for the
+                                    master SME catalog.
+                                </p>
                             </div>
-                            <a href="/app/admin/sme-catalog/import/template" className="text-sm font-semibold underline">
+                            <a
+                                href="/app/admin/sme-catalog/import/template"
+                                className="text-sm font-semibold underline"
+                            >
                                 Download Template
                             </a>
                         </div>
-                        <form onSubmit={submitImport} className="mb-4 flex flex-wrap items-center gap-3">
+                        <form
+                            onSubmit={submitImport}
+                            className="mb-4 flex flex-wrap items-center gap-3"
+                        >
                             <input
                                 type="file"
                                 accept=".csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                                onChange={(event) =>
+                                    setSelectedFile(
+                                        event.target.files?.[0] ?? null,
+                                    )
+                                }
                             />
                             <Button type="submit" disabled={importing}>
                                 {importing ? 'Importing...' : 'Import File'}
@@ -209,23 +243,38 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
                         {importSummary && (
                             <div className="mb-4 rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground">
                                 <div className="flex flex-wrap gap-4">
-                                    <span>Total: {importSummary.total_rows}</span>
-                                    <span>Imported: {importSummary.imported}</span>
-                                    <span>Updated: {importSummary.updated}</span>
-                                    <span>Skipped: {importSummary.skipped}</span>
+                                    <span>
+                                        Total: {importSummary.total_rows}
+                                    </span>
+                                    <span>
+                                        Imported: {importSummary.imported}
+                                    </span>
+                                    <span>
+                                        Updated: {importSummary.updated}
+                                    </span>
+                                    <span>
+                                        Skipped: {importSummary.skipped}
+                                    </span>
                                 </div>
                                 {importSummary.errors.length > 0 && (
                                     <ul className="mt-2 list-disc pl-5 text-red-700">
-                                        {importSummary.errors.slice(0, 8).map((item, index) => (
-                                            <li key={index}>
-                                                Row {item.row}: {item.message}
-                                            </li>
-                                        ))}
+                                        {importSummary.errors
+                                            .slice(0, 8)
+                                            .map((item, index) => (
+                                                <li key={index}>
+                                                    Row {item.row}:{' '}
+                                                    {item.message}
+                                                </li>
+                                            ))}
                                     </ul>
                                 )}
                             </div>
                         )}
-                        <form method="get" action="/app/admin/sme-catalog" className="mb-4 flex flex-wrap gap-2">
+                        <form
+                            method="get"
+                            action="/app/admin/sme-catalog"
+                            className="mb-4 flex flex-wrap gap-2"
+                        >
                             <SearchInput
                                 name="search"
                                 defaultValue={filters.search ?? ''}
@@ -244,7 +293,10 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
                                     </option>
                                 ))}
                             </select>
-                            <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">
+                            <button
+                                type="submit"
+                                className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground"
+                            >
                                 Filter
                             </button>
                         </form>
@@ -255,9 +307,15 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
                                     <tr>
                                         <th className="px-3 py-2">Name</th>
                                         <th className="px-3 py-2">Category</th>
-                                        <th className="px-3 py-2">Brand / Model</th>
-                                        <th className="px-3 py-2">Manufacturer</th>
-                                        <th className="px-3 py-2">School Records</th>
+                                        <th className="px-3 py-2">
+                                            Brand / Model
+                                        </th>
+                                        <th className="px-3 py-2">
+                                            Manufacturer
+                                        </th>
+                                        <th className="px-3 py-2">
+                                            School Records
+                                        </th>
                                         <th className="px-3 py-2">Status</th>
                                         <th className="px-3 py-2">Actions</th>
                                     </tr>
@@ -270,29 +328,61 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
                                         />
                                     )}
                                     {catalogItems.data.map((item) => (
-                                        <tr key={item.id} className="border-t border-border">
-                                            <td className="px-3 py-2 font-medium text-foreground">{item.item_name}</td>
-                                            <td className="px-3 py-2 text-muted-foreground">{item.category}</td>
-                                            <td className="px-3 py-2 text-muted-foreground">
-                                                {[item.brand, item.model].filter(Boolean).join(' / ') || '-'}
+                                        <tr
+                                            key={item.id}
+                                            className="border-t border-border"
+                                        >
+                                            <td className="px-3 py-2 font-medium text-foreground">
+                                                {item.item_name}
                                             </td>
-                                            <td className="px-3 py-2 text-muted-foreground">{item.manufacturer ?? '-'}</td>
-                                            <td className="px-3 py-2 text-muted-foreground">{item.schools_using.toLocaleString()}</td>
+                                            <td className="px-3 py-2 text-muted-foreground">
+                                                {item.category}
+                                            </td>
+                                            <td className="px-3 py-2 text-muted-foreground">
+                                                {[item.brand, item.model]
+                                                    .filter(Boolean)
+                                                    .join(' / ') || '-'}
+                                            </td>
+                                            <td className="px-3 py-2 text-muted-foreground">
+                                                {item.manufacturer ?? '-'}
+                                            </td>
+                                            <td className="px-3 py-2 text-muted-foreground">
+                                                {item.schools_using.toLocaleString()}
+                                            </td>
                                             <td className="px-3 py-2">
-                                                <StatusBadge tone={item.is_active ? 'success' : 'neutral'}>
-                                                    {item.is_active ? 'Active' : 'Inactive'}
+                                                <StatusBadge
+                                                    tone={
+                                                        item.is_active
+                                                            ? 'success'
+                                                            : 'neutral'
+                                                    }
+                                                >
+                                                    {item.is_active
+                                                        ? 'Active'
+                                                        : 'Inactive'}
                                                 </StatusBadge>
                                             </td>
                                             <td className="px-3 py-2">
                                                 <RowActions
                                                     label={`Actions for ${item.item_name}`}
                                                     actions={[
-                                                        { label: 'Edit', icon: Pencil, onSelect: () => openEditDialog(item) },
+                                                        {
+                                                            label: 'Edit',
+                                                            icon: Pencil,
+                                                            onSelect: () =>
+                                                                openEditDialog(
+                                                                    item,
+                                                                ),
+                                                        },
                                                         {
                                                             label: 'Delete',
                                                             icon: Trash2,
-                                                            variant: 'destructive',
-                                                            onSelect: () => deleteItem(item),
+                                                            variant:
+                                                                'destructive',
+                                                            onSelect: () =>
+                                                                deleteItem(
+                                                                    item,
+                                                                ),
                                                         },
                                                     ]}
                                                 />
@@ -303,7 +393,10 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
                             </table>
                         </div>
 
-                        <Pagination links={catalogItems.links} className="mt-4" />
+                        <Pagination
+                            links={catalogItems.links}
+                            className="mt-4"
+                        />
                     </section>
                 </div>
             </main>
@@ -311,22 +404,34 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
                     <DialogHeader>
-                        <DialogTitle>{editingId === null ? 'Add Catalog SME Item' : 'Edit Catalog SME Item'}</DialogTitle>
+                        <DialogTitle>
+                            {editingId === null
+                                ? 'Add Catalog SME Item'
+                                : 'Edit Catalog SME Item'}
+                        </DialogTitle>
                         <DialogDescription>
-                            Schools will see this entry when registering SME items. Deactivate an entry to hide it from
-                            schools without affecting existing records.
+                            Schools will see this entry when registering SME
+                            items. Deactivate an entry to hide it from schools
+                            without affecting existing records.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="grid gap-3">
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             <Field label="Item Name *" error={errors.item_name}>
-                                <Input value={data.item_name} onChange={(event) => setData('item_name', event.target.value)} />
+                                <Input
+                                    value={data.item_name}
+                                    onChange={(event) =>
+                                        setData('item_name', event.target.value)
+                                    }
+                                />
                             </Field>
                             <Field label="Category *" error={errors.category}>
                                 <select
                                     value={data.category}
-                                    onChange={(event) => setData('category', event.target.value)}
+                                    onChange={(event) =>
+                                        setData('category', event.target.value)
+                                    }
                                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                                 >
                                     {categories.map((category) => (
@@ -337,39 +442,85 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
                                 </select>
                             </Field>
                             <Field label="Brand" error={errors.brand}>
-                                <Input value={data.brand} onChange={(event) => setData('brand', event.target.value)} />
+                                <Input
+                                    value={data.brand}
+                                    onChange={(event) =>
+                                        setData('brand', event.target.value)
+                                    }
+                                />
                             </Field>
                             <Field label="Model" error={errors.model}>
-                                <Input value={data.model} onChange={(event) => setData('model', event.target.value)} />
+                                <Input
+                                    value={data.model}
+                                    onChange={(event) =>
+                                        setData('model', event.target.value)
+                                    }
+                                />
                             </Field>
-                            <Field label="Manufacturer" error={errors.manufacturer}>
-                                <Input value={data.manufacturer} onChange={(event) => setData('manufacturer', event.target.value)} />
+                            <Field
+                                label="Manufacturer"
+                                error={errors.manufacturer}
+                            >
+                                <Input
+                                    value={data.manufacturer}
+                                    onChange={(event) =>
+                                        setData(
+                                            'manufacturer',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
                             </Field>
                             <Field label="Active" error={errors.is_active}>
                                 <select
                                     value={data.is_active ? '1' : '0'}
-                                    onChange={(event) => setData('is_active', event.target.value === '1')}
+                                    onChange={(event) =>
+                                        setData(
+                                            'is_active',
+                                            event.target.value === '1',
+                                        )
+                                    }
                                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                                 >
-                                    <option value="1">Active (visible to schools)</option>
-                                    <option value="0">Inactive (hidden from schools)</option>
+                                    <option value="1">
+                                        Active (visible to schools)
+                                    </option>
+                                    <option value="0">
+                                        Inactive (hidden from schools)
+                                    </option>
                                 </select>
                             </Field>
                         </div>
                         <div className="grid gap-3 lg:grid-cols-2">
-                            <Field label="Specifications" error={errors.specifications}>
+                            <Field
+                                label="Specifications"
+                                error={errors.specifications}
+                            >
                                 <textarea
                                     rows={2}
                                     value={data.specifications}
-                                    onChange={(event) => setData('specifications', event.target.value)}
+                                    onChange={(event) =>
+                                        setData(
+                                            'specifications',
+                                            event.target.value,
+                                        )
+                                    }
                                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 />
                             </Field>
-                            <Field label="Description" error={errors.description}>
+                            <Field
+                                label="Description"
+                                error={errors.description}
+                            >
                                 <textarea
                                     rows={2}
                                     value={data.description}
-                                    onChange={(event) => setData('description', event.target.value)}
+                                    onChange={(event) =>
+                                        setData(
+                                            'description',
+                                            event.target.value,
+                                        )
+                                    }
                                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 />
                             </Field>
@@ -377,10 +528,18 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDialogOpen(false)}
+                        >
                             Cancel
                         </Button>
-                        <Button type="button" onClick={submit} disabled={processing}>
+                        <Button
+                            type="button"
+                            onClick={submit}
+                            disabled={processing}
+                        >
                             {processing ? (
                                 <>
                                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -399,10 +558,20 @@ export default function AdminSmeCatalog({ filters, categories, catalogItems }: P
     );
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function Field({
+    label,
+    error,
+    children,
+}: {
+    label: string;
+    error?: string;
+    children: React.ReactNode;
+}) {
     return (
         <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">{label}</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+                {label}
+            </label>
             {children}
             {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
         </div>

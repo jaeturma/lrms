@@ -19,6 +19,7 @@ import { DivergingStackedBar } from '@/components/charts/diverging-stacked-bar';
 import { EmptyChart } from '@/components/charts/empty-chart';
 import { GroupedColumnChart } from '@/components/charts/grouped-column-chart';
 import { HProgressBars } from '@/components/charts/h-progress-bars';
+import { Heatmap } from '@/components/charts/heatmap';
 import { DataTable } from '@/components/data-table';
 import { PageHeaderIcon } from '@/components/page-header-icon';
 import { StatTile } from '@/components/stat-tile';
@@ -63,10 +64,50 @@ type Props = {
         total_distributions: number;
     };
     enrollmentByGrade: Array<{ grade: string; male: number; female: number }>;
-    activationByMunicipality: Array<{ municipality: string; activated: number; total: number }>;
-    equipmentCondition: Array<{ type: string; good: number; fair: number; needs_attention: number }>;
-    defectRateByMunicipality: Array<{ municipality: string; delivered: number; defective: number; rate: number }>;
-    pendingActivations: Array<{ school_id: string; school_name: string; district: string | null; requested_at: string | null }>;
+    activationByMunicipality: Array<{
+        municipality: string;
+        activated: number;
+        total: number;
+    }>;
+    equipmentCondition: Array<{
+        type: string;
+        good: number;
+        fair: number;
+        needs_attention: number;
+    }>;
+    defectRateByMunicipality: Array<{
+        municipality: string;
+        delivered: number;
+        defective: number;
+        rate: number;
+    }>;
+    pendingActivations: Array<{
+        school_id: string;
+        school_name: string;
+        district: string | null;
+        requested_at: string | null;
+    }>;
+    learnerEquipmentRatio: Array<{
+        municipality: string;
+        learners: number;
+        equipment: number;
+        ratio: number | null;
+    }>;
+    smeLabAdequacy: Array<{
+        municipality: string;
+        adequate: number;
+        total: number;
+    }>;
+    equipmentFunctionalStatus: Array<{
+        type: string;
+        functional: number;
+        non_functional: number;
+    }>;
+    districtResourceHeatmap: {
+        districts: string[];
+        resourceTypes: string[];
+        values: number[][];
+    };
     activeSchoolYear: { id: number; name: string } | null;
     districts: District[];
     schoolTypes: string[];
@@ -87,6 +128,10 @@ export default function AdminDashboard({
     equipmentCondition,
     defectRateByMunicipality,
     pendingActivations,
+    learnerEquipmentRatio,
+    smeLabAdequacy,
+    equipmentFunctionalStatus,
+    districtResourceHeatmap,
     activeSchoolYear,
     districts,
     schoolTypes,
@@ -101,18 +146,22 @@ export default function AdminDashboard({
         {
             id: 'municipality_barangay',
             header: 'Municipality/Barangay',
-            accessorFn: (row) => `${row.municipality ?? '-'} - ${row.barangay ?? '-'}`,
-            cell: ({ row }) => `${row.original.municipality ?? '-'} - ${row.original.barangay ?? '-'}`,
+            accessorFn: (row) =>
+                `${row.municipality ?? '-'} - ${row.barangay ?? '-'}`,
+            cell: ({ row }) =>
+                `${row.original.municipality ?? '-'} - ${row.original.barangay ?? '-'}`,
         },
         {
             accessorKey: 'is_activated',
             header: 'Status',
             cell: ({ row }) => (
-                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                    row.original.is_activated
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
-                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
-                }`}>
+                <span
+                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                        row.original.is_activated
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
+                    }`}
+                >
                     {row.original.is_activated ? 'Activated' : 'Pending'}
                 </span>
             ),
@@ -125,7 +174,9 @@ export default function AdminDashboard({
             cell: ({ row }) => (
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" asChild>
-                        <Link href={`/app/admin/schools/${row.original.school_id}/edit`}>
+                        <Link
+                            href={`/app/admin/schools/${row.original.school_id}/edit`}
+                        >
                             <Pencil className="h-3.5 w-3.5" />
                         </Link>
                     </Button>
@@ -144,7 +195,9 @@ export default function AdminDashboard({
     ];
 
     const deleteSchool = (schoolId: string) => {
-        if (!window.confirm('Delete this school record? This cannot be undone.')) {
+        if (
+            !window.confirm('Delete this school record? This cannot be undone.')
+        ) {
             return;
         }
 
@@ -153,16 +206,30 @@ export default function AdminDashboard({
         });
     };
 
-    const activationRate = stats.total_schools > 0 ? Math.round((stats.activated_schools / stats.total_schools) * 100) : 0;
+    const activationRate =
+        stats.total_schools > 0
+            ? Math.round((stats.activated_schools / stats.total_schools) * 100)
+            : 0;
 
-    const asOf = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    const asOf = new Date().toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    });
 
     const scopeParts = [
-        filters.district_id ? districts.find((district) => district.id === filters.district_id)?.name : null,
+        filters.district_id
+            ? districts.find((district) => district.id === filters.district_id)
+                  ?.name
+            : null,
         filters.school_type ?? null,
-        filters.grade_level_id ? gradeLevels.find((grade) => grade.id === filters.grade_level_id)?.name : null,
+        filters.grade_level_id
+            ? gradeLevels.find((grade) => grade.id === filters.grade_level_id)
+                  ?.name
+            : null,
     ].filter(Boolean);
-    const scopeLabel = scopeParts.length > 0 ? scopeParts.join(' · ') : 'Entire Division';
+    const scopeLabel =
+        scopeParts.length > 0 ? scopeParts.join(' · ') : 'Entire Division';
     const hasScope = scopeParts.length > 0;
 
     return (
@@ -177,9 +244,12 @@ export default function AdminDashboard({
                             className="bg-slate-100 text-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
                         />
                         <div>
-                            <h1 className="text-xl font-bold text-foreground">Division Dashboard</h1>
+                            <h1 className="text-xl font-bold text-foreground">
+                                Division Dashboard
+                            </h1>
                             <p className="text-sm text-muted-foreground">
-                                {scopeLabel} · learning resources, equipment, and school activation at a glance · as of {asOf}
+                                {scopeLabel} · learning resources, equipment,
+                                and school activation at a glance · as of {asOf}
                             </p>
                         </div>
                     </div>
@@ -192,12 +262,20 @@ export default function AdminDashboard({
                 </header>
 
                 <section className="rounded-2xl border border-border bg-card p-3 shadow-sm">
-                    <form method="get" action="/app/admin/dashboard" className="flex flex-wrap items-center gap-2">
+                    <form
+                        method="get"
+                        action="/app/admin/dashboard"
+                        className="flex flex-wrap items-center gap-2"
+                    >
                         <span className="mr-1 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                             <SlidersHorizontal className="size-3.5" />
                             Scope
                         </span>
-                        <input type="hidden" name="search" value={filters.search ?? ''} />
+                        <input
+                            type="hidden"
+                            name="search"
+                            value={filters.search ?? ''}
+                        />
                         <select
                             name="district_id"
                             defaultValue={filters.district_id ?? ''}
@@ -234,11 +312,17 @@ export default function AdminDashboard({
                                 </option>
                             ))}
                         </select>
-                        <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">
+                        <button
+                            type="submit"
+                            className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground"
+                        >
                             Apply
                         </button>
                         {hasScope && (
-                            <Link href="/app/admin/dashboard" className="text-sm text-primary underline underline-offset-4">
+                            <Link
+                                href="/app/admin/dashboard"
+                                className="text-sm text-primary underline underline-offset-4"
+                            >
                                 Entire Division
                             </Link>
                         )}
@@ -297,22 +381,40 @@ export default function AdminDashboard({
                 <section className="grid gap-3 lg:grid-cols-2">
                     <ChartCard
                         title="Enrollment by Grade Level"
-                        subtitle={activeSchoolYear ? `Learners encoded for SY ${activeSchoolYear.name}` : 'No active school year set'}
+                        subtitle={
+                            activeSchoolYear
+                                ? `Learners encoded for SY ${activeSchoolYear.name}`
+                                : 'No active school year set'
+                        }
                         legend={[
                             { label: 'Male', color: 'var(--viz-series-1)' },
                             { label: 'Female', color: 'var(--viz-series-2)' },
                         ]}
                         table={{
                             headers: ['Grade level', 'Male', 'Female', 'Total'],
-                            rows: enrollmentByGrade.map((row) => [row.grade, row.male, row.female, row.male + row.female]),
+                            rows: enrollmentByGrade.map((row) => [
+                                row.grade,
+                                row.male,
+                                row.female,
+                                row.male + row.female,
+                            ]),
                         }}
                     >
                         {enrollmentByGrade.length > 0 ? (
                             <GroupedColumnChart
-                                data={enrollmentByGrade.map((row) => ({ label: row.grade, values: [row.male, row.female] }))}
+                                data={enrollmentByGrade.map((row) => ({
+                                    label: row.grade,
+                                    values: [row.male, row.female],
+                                }))}
                                 series={[
-                                    { name: 'Male', color: 'var(--viz-series-1)' },
-                                    { name: 'Female', color: 'var(--viz-series-2)' },
+                                    {
+                                        name: 'Male',
+                                        color: 'var(--viz-series-1)',
+                                    },
+                                    {
+                                        name: 'Female',
+                                        color: 'var(--viz-series-2)',
+                                    },
                                 ]}
                             />
                         ) : (
@@ -324,7 +426,12 @@ export default function AdminDashboard({
                         title="School Activation by Municipality"
                         subtitle="Activated school accounts against total schools on record"
                         table={{
-                            headers: ['Municipality', 'Activated', 'Total', 'Rate'],
+                            headers: [
+                                'Municipality',
+                                'Activated',
+                                'Total',
+                                'Rate',
+                            ],
                             rows: activationByMunicipality.map((row) => [
                                 row.municipality,
                                 row.activated,
@@ -351,12 +458,21 @@ export default function AdminDashboard({
                         title="Equipment Condition"
                         subtitle="Serviceable units to the right, units needing repair to the left"
                         legend={[
-                            { label: 'Needs attention', color: 'var(--viz-bad)' },
+                            {
+                                label: 'Needs attention',
+                                color: 'var(--viz-bad)',
+                            },
                             { label: 'Fair', color: 'var(--viz-neutral)' },
                             { label: 'Good', color: 'var(--viz-series-1)' },
                         ]}
                         table={{
-                            headers: ['Equipment', 'Good', 'Fair', 'Needs attention', 'Total'],
+                            headers: [
+                                'Equipment',
+                                'Good',
+                                'Fair',
+                                'Needs attention',
+                                'Total',
+                            ],
                             rows: equipmentCondition.map((row) => [
                                 row.type,
                                 row.good,
@@ -366,7 +482,10 @@ export default function AdminDashboard({
                             ]),
                         }}
                     >
-                        {equipmentCondition.some((row) => row.good + row.fair + row.needs_attention > 0) ? (
+                        {equipmentCondition.some(
+                            (row) =>
+                                row.good + row.fair + row.needs_attention > 0,
+                        ) ? (
                             <DivergingStackedBar
                                 rows={equipmentCondition.map((row) => ({
                                     label: row.type,
@@ -384,8 +503,18 @@ export default function AdminDashboard({
                         title="Learning Resource Defect Rate"
                         subtitle="Share of delivered copies reported with issues or defects, by municipality"
                         table={{
-                            headers: ['Municipality', 'Delivered', 'Defective', 'Rate'],
-                            rows: defectRateByMunicipality.map((row) => [row.municipality, row.delivered, row.defective, `${row.rate}%`]),
+                            headers: [
+                                'Municipality',
+                                'Delivered',
+                                'Defective',
+                                'Rate',
+                            ],
+                            rows: defectRateByMunicipality.map((row) => [
+                                row.municipality,
+                                row.delivered,
+                                row.defective,
+                                `${row.rate}%`,
+                            ]),
                         }}
                     >
                         {defectRateByMunicipality.length > 0 ? (
@@ -393,7 +522,12 @@ export default function AdminDashboard({
                                 rows={defectRateByMunicipality.map((row) => ({
                                     label: row.municipality,
                                     value: row.rate,
-                                    max: Math.max(...defectRateByMunicipality.map((r) => r.rate), 1),
+                                    max: Math.max(
+                                        ...defectRateByMunicipality.map(
+                                            (r) => r.rate,
+                                        ),
+                                        1,
+                                    ),
                                     valueText: `${row.rate}%`,
                                 }))}
                             />
@@ -403,20 +537,175 @@ export default function AdminDashboard({
                     </ChartCard>
                 </section>
 
+                <section className="grid gap-3 lg:grid-cols-2">
+                    <ChartCard
+                        title="Learner-to-Equipment Ratio"
+                        subtitle="Combined ICT, Science & Math, and Other Equipment units against enrolled learners, by municipality"
+                        table={{
+                            headers: [
+                                'Municipality',
+                                'Learners',
+                                'Equipment Units',
+                                'Ratio',
+                            ],
+                            rows: learnerEquipmentRatio.map((row) => [
+                                row.municipality,
+                                row.learners,
+                                row.equipment,
+                                row.ratio !== null ? `1 : ${row.ratio}` : '-',
+                            ]),
+                        }}
+                    >
+                        {learnerEquipmentRatio.length > 0 ? (
+                            <HProgressBars
+                                rows={learnerEquipmentRatio.map((row) => ({
+                                    label: row.municipality,
+                                    value: row.equipment,
+                                    max: row.learners,
+                                    valueText:
+                                        row.ratio !== null
+                                            ? `${row.equipment.toLocaleString()} · 1:${row.ratio}`
+                                            : `${row.equipment.toLocaleString()}`,
+                                }))}
+                            />
+                        ) : (
+                            <EmptyChart message="No equipment or enrollment on record yet." />
+                        )}
+                    </ChartCard>
+
+                    <ChartCard
+                        title="Science & Math Laboratory Adequacy"
+                        subtitle="Schools with at least one functional Science AND Mathematics equipment item, by municipality"
+                        table={{
+                            headers: [
+                                'Municipality',
+                                'Adequate Schools',
+                                'Total Schools',
+                                'Rate',
+                            ],
+                            rows: smeLabAdequacy.map((row) => [
+                                row.municipality,
+                                row.adequate,
+                                row.total,
+                                `${row.total > 0 ? Math.round((row.adequate / row.total) * 100) : 0}%`,
+                            ]),
+                        }}
+                    >
+                        {smeLabAdequacy.length > 0 ? (
+                            <HProgressBars
+                                rows={smeLabAdequacy.map((row) => ({
+                                    label: row.municipality,
+                                    value: row.adequate,
+                                    max: row.total,
+                                    valueText: `${row.adequate.toLocaleString()}/${row.total.toLocaleString()}`,
+                                }))}
+                            />
+                        ) : (
+                            <EmptyChart message="No schools on record yet." />
+                        )}
+                    </ChartCard>
+
+                    <ChartCard
+                        title="Equipment Functional Status"
+                        subtitle="Non-functional (missing/lost/condemned/disposed) to the left, functional (available/in-use/borrowed) to the right"
+                        legend={[
+                            {
+                                label: 'Non-functional',
+                                color: 'var(--viz-bad)',
+                            },
+                            {
+                                label: 'Functional',
+                                color: 'var(--viz-series-1)',
+                            },
+                        ]}
+                        table={{
+                            headers: [
+                                'Equipment',
+                                'Functional',
+                                'Non-functional',
+                                'Total',
+                            ],
+                            rows: equipmentFunctionalStatus.map((row) => [
+                                row.type,
+                                row.functional,
+                                row.non_functional,
+                                row.functional + row.non_functional,
+                            ]),
+                        }}
+                    >
+                        {equipmentFunctionalStatus.some(
+                            (row) => row.functional + row.non_functional > 0,
+                        ) ? (
+                            <DivergingStackedBar
+                                rows={equipmentFunctionalStatus.map((row) => ({
+                                    label: row.type,
+                                    negative: row.non_functional,
+                                    neutral: 0,
+                                    positive: row.functional,
+                                }))}
+                            />
+                        ) : (
+                            <EmptyChart message="No equipment registered by schools yet." />
+                        )}
+                    </ChartCard>
+
+                    <ChartCard
+                        title="District-by-District Distribution Heatmap"
+                        subtitle="Printed resource copies delivered and equipment units on record, by district"
+                        table={{
+                            headers: [
+                                'District',
+                                ...districtResourceHeatmap.resourceTypes,
+                            ],
+                            rows: districtResourceHeatmap.districts.map(
+                                (district, index) => [
+                                    district,
+                                    ...(districtResourceHeatmap.values[index] ??
+                                        []),
+                                ],
+                            ),
+                        }}
+                    >
+                        {districtResourceHeatmap.districts.length > 0 ? (
+                            <Heatmap
+                                rowLabels={districtResourceHeatmap.districts}
+                                columnLabels={
+                                    districtResourceHeatmap.resourceTypes
+                                }
+                                values={districtResourceHeatmap.values}
+                            />
+                        ) : (
+                            <EmptyChart message="No districts on record yet." />
+                        )}
+                    </ChartCard>
+                </section>
+
                 {pendingActivations.length > 0 && (
                     <section className="rounded-2xl border border-amber-300/70 bg-amber-50/60 p-4 shadow-sm dark:border-amber-800 dark:bg-amber-950/30">
                         <div className="mb-2 flex items-center gap-2">
                             <ClipboardList className="size-4 text-amber-700 dark:text-amber-300" />
-                            <h2 className="text-base font-semibold text-foreground">Pending Activation Requests</h2>
+                            <h2 className="text-base font-semibold text-foreground">
+                                Pending Activation Requests
+                            </h2>
                         </div>
                         <ul className="divide-y divide-amber-200/70 dark:divide-amber-900/50">
                             {pendingActivations.map((request) => (
-                                <li key={request.school_id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                                <li
+                                    key={request.school_id}
+                                    className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+                                >
                                     <div>
-                                        <p className="font-medium text-foreground">{request.school_name}</p>
+                                        <p className="font-medium text-foreground">
+                                            {request.school_name}
+                                        </p>
                                         <p className="text-xs text-muted-foreground">
-                                            {request.district ?? 'No district'} · requested{' '}
-                                            {request.requested_at ? new Date(request.requested_at).toLocaleDateString() : '-'}
+                                            {request.district ?? 'No district'}{' '}
+                                            · requested{' '}
+                                            {request.requested_at
+                                                ? new Date(
+                                                      request.requested_at,
+                                                  ).toLocaleDateString()
+                                                : '-'}
                                         </p>
                                     </div>
                                     <Link
@@ -433,18 +722,39 @@ export default function AdminDashboard({
 
                 <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                        <h2 className="text-lg font-semibold text-foreground">School Directory</h2>
-                        <form method="get" action="/app/admin/dashboard" className="flex flex-wrap gap-2">
-                            <input type="hidden" name="district_id" value={filters.district_id ?? ''} />
-                            <input type="hidden" name="school_type" value={filters.school_type ?? ''} />
-                            <input type="hidden" name="grade_level_id" value={filters.grade_level_id ?? ''} />
+                        <h2 className="text-lg font-semibold text-foreground">
+                            School Directory
+                        </h2>
+                        <form
+                            method="get"
+                            action="/app/admin/dashboard"
+                            className="flex flex-wrap gap-2"
+                        >
+                            <input
+                                type="hidden"
+                                name="district_id"
+                                value={filters.district_id ?? ''}
+                            />
+                            <input
+                                type="hidden"
+                                name="school_type"
+                                value={filters.school_type ?? ''}
+                            />
+                            <input
+                                type="hidden"
+                                name="grade_level_id"
+                                value={filters.grade_level_id ?? ''}
+                            />
                             <input
                                 name="search"
                                 defaultValue={filters.search ?? ''}
                                 placeholder="Search school name or ID"
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"
                             />
-                            <button type="submit" className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground">
+                            <button
+                                type="submit"
+                                className="h-9 rounded-md bg-primary px-4 text-sm text-primary-foreground"
+                            >
                                 Search
                             </button>
                         </form>
@@ -465,12 +775,16 @@ export default function AdminDashboard({
                                         <Link
                                             href={link.url}
                                             className={`rounded border px-3 py-1 ${link.active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground'}`}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                            dangerouslySetInnerHTML={{
+                                                __html: link.label,
+                                            }}
                                         />
                                     ) : (
                                         <span
                                             className="rounded border border-border bg-card px-3 py-1 text-muted-foreground"
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                            dangerouslySetInnerHTML={{
+                                                __html: link.label,
+                                            }}
                                         />
                                     )}
                                 </span>
@@ -482,4 +796,3 @@ export default function AdminDashboard({
         </>
     );
 }
-

@@ -1,6 +1,10 @@
 import { Link } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
     SidebarGroup,
     SidebarGroupLabel,
@@ -25,17 +29,31 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                 {items.map((item) => {
                     const hasChildren = Boolean(item.children?.length);
                     const isActive = hasChildren
-                        ? item.children?.some((child) => isCurrentUrl(child.href)) || isCurrentUrl(item.href)
+                        ? item.children?.some((child) =>
+                              isCurrentUrl(child.href),
+                          ) || isCurrentUrl(item.href)
                         : isCurrentUrl(item.href);
 
                     if (hasChildren) {
                         return (
-                            <Collapsible key={item.title} asChild defaultOpen={isActive}>
+                            <Collapsible
+                                key={item.title}
+                                asChild
+                                defaultOpen={isActive}
+                            >
                                 <SidebarMenuItem>
                                     <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton isActive={isActive} tooltip={{ children: item.title }}>
+                                        <SidebarMenuButton
+                                            isActive={isActive}
+                                            tooltip={{ children: item.title }}
+                                        >
                                             {item.icon && (
-                                                <span className={cn('flex items-center justify-center text-sidebar-accent-foreground', item.iconClassName)}>
+                                                <span
+                                                    className={cn(
+                                                        'flex items-center justify-center text-sidebar-accent-foreground',
+                                                        item.iconClassName,
+                                                    )}
+                                                >
                                                     <item.icon className="size-5 stroke-current stroke-[1.75]" />
                                                 </span>
                                             )}
@@ -46,10 +64,22 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                     <CollapsibleContent>
                                         <SidebarMenuSub>
                                             {item.children?.map((child) => (
-                                                <SidebarMenuSubItem key={child.title}>
-                                                    <SidebarMenuSubButton asChild isActive={isCurrentUrl(child.href)}>
-                                                        <Link href={child.href} prefetch>
-                                                            <span>{child.title}</span>
+                                                <SidebarMenuSubItem
+                                                    key={child.title}
+                                                >
+                                                    <SidebarMenuSubButton
+                                                        asChild
+                                                        isActive={isCurrentUrl(
+                                                            child.href,
+                                                        )}
+                                                    >
+                                                        <Link
+                                                            href={child.href}
+                                                            prefetch
+                                                        >
+                                                            <span>
+                                                                {child.title}
+                                                            </span>
                                                         </Link>
                                                     </SidebarMenuSubButton>
                                                 </SidebarMenuSubItem>
@@ -70,7 +100,12 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                             >
                                 <Link href={item.href} prefetch>
                                     {item.icon && (
-                                        <span className={cn('flex items-center justify-center text-sidebar-accent-foreground', item.iconClassName)}>
+                                        <span
+                                            className={cn(
+                                                'flex items-center justify-center text-sidebar-accent-foreground',
+                                                item.iconClassName,
+                                            )}
+                                        >
                                             <item.icon className="size-5 stroke-current stroke-[1.75]" />
                                         </span>
                                     )}

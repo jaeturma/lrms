@@ -15,6 +15,7 @@ use App\Models\ResourceDistribution;
 use App\Models\School;
 use App\Models\SchoolYear;
 use App\Models\Sme;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -25,6 +26,12 @@ class AdminDashboardController extends Controller
     private const REPAIR_CONDITIONS = ['Needs Repair', 'Beyond Repair'];
 
     private const GOOD_CONDITIONS = ['Excellent', 'Good'];
+
+    private const FUNCTIONAL_STATUSES = ['Available', 'In Use', 'Borrowed'];
+
+    private const NON_FUNCTIONAL_STATUSES = ['Missing', 'Lost', 'Condemned', 'Disposed'];
+
+    private const SME_LAB_CATEGORIES = ['Science', 'Mathematics'];
 
     /**
      * Handle the incoming request.
@@ -78,6 +85,10 @@ class AdminDashboardController extends Controller
             'equipmentCondition' => $this->equipmentCondition($schoolIds),
             'defectRateByMunicipality' => $this->defectRateByMunicipality($schoolIds, $gradeLevelId),
             'pendingActivations' => $this->pendingActivations($schoolIds),
+            'learnerEquipmentRatio' => $this->learnerEquipmentRatioByMunicipality($activeSchoolYear, $schoolIds),
+            'smeLabAdequacy' => $this->smeLabAdequacyByMunicipality($schoolIds),
+            'equipmentFunctionalStatus' => $this->equipmentFunctionalStatus($schoolIds),
+            'districtResourceHeatmap' => $this->districtResourceHeatmap($schoolIds),
             'activeSchoolYear' => $activeSchoolYear?->only(['id', 'name']),
             'districts' => District::query()->orderBy('name')->get(['id', 'name']),
             'schoolTypes' => School::SCHOOL_TYPES,
@@ -273,5 +284,200 @@ class AdminDashboardController extends Controller
                 'district' => $school->district?->name,
                 'requested_at' => $school->activation_requested_at?->toIso8601String(),
             ]);
+    }
+
+    /**
+     * @param  Collection<int, int>|null  $schoolIds
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function learnerEquipmentRatioByMunicipality(?SchoolYear $activeSchoolYear, ?Collection $schoolIds): Collection
+    {
+        $learners = $activeSchoolYear
+            ? $this->sumByMunicipality(Enrollment::class, 'enrollments', $schoolIds, function ($query) use ($activeSchoolYear): void {
+                $query->where('enrollments.school_year_id', $activeSchoolYear->id);
+            }, 'enrollments.male_count + enrollments.female_count')
+            : collect();
+
+        $ict = $this->countByMunicipality(IctEquipment::class, 'ict_equipment', $schoolIds);
+        $sme = $this->countByMunicipality(Sme::class, 'sme', $schoolIds);
+        $other = $this->countByMunicipality(OtherEquipment::class, 'other_equipment', $schoolIds);
+
+        return Municipality::query()
+            ->orderBy('name')
+            ->get()
+            ->map(function (Municipality $municipality) use ($learners, $ict, $sme, $other): array {
+                $learnerCount = (int) ($learners->get($municipality->id) ?? 0);
+                $equipmentCount = (int) ($ict->get($municipality->id) ?? 0)
+                    + (int) ($sme->get($municipality->id) ?? 0)
+                    + (int) ($other->get($municipality->id) ?? 0);
+
+                return [
+                    'municipality' => $municipality->name,
+                    'learners' => $learnerCount,
+                    'equipment' => $equipmentCount,
+                    'ratio' => $equipmentCount > 0 ? round($learnerCount / $equipmentCount, 1) : null,
+                ];
+            })
+            ->filter(fn (array $row): bool => $row['learners'] > 0 || $row['equipment'] > 0)
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, int>|null  $schoolIds
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function smeLabAdequacyByMunicipality(?Collection $schoolIds): Collection
+    {
+        $schools = School::query()
+            ->when($schoolIds !== null, fn ($query) => $query->whereIn('id', $schoolIds))
+            ->with('municipality:id,name')
+            ->get(['id', 'municipality_id']);
+
+        $functionalCategories = Sme::query()
+            ->whereIn('school_id', $schools->pluck('id'))
+            ->whereNotIn('condition', self::REPAIR_CONDITIONS)
+            ->select('school_id', 'category')
+            ->distinct()
+            ->get()
+            ->groupBy('school_id')
+            ->map(fn (Collection $rows): Collection => $rows->pluck('category'));
+
+        return $schools
+            ->groupBy('municipality_id')
+            ->map(function (Collection $municipalitySchools) use ($functionalCategories): array {
+                $adequate = $municipalitySchools->filter(function (School $school) use ($functionalCategories): bool {
+                    $categories = $functionalCategories->get($school->id, collect());
+
+                    return collect(self::SME_LAB_CATEGORIES)->every(fn (string $category): bool => $categories->contains($category));
+                })->count();
+
+                return [
+                    'municipality' => $municipalitySchools->first()->municipality?->name ?? 'Unassigned',
+                    'adequate' => $adequate,
+                    'total' => $municipalitySchools->count(),
+                ];
+            })
+            ->sortBy('municipality')
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, int>|null  $schoolIds
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function equipmentFunctionalStatus(?Collection $schoolIds): Collection
+    {
+        $buckets = [
+            'ICT Equipment' => IctEquipment::query(),
+            'Science & Math' => Sme::query(),
+            'Other Equipment' => OtherEquipment::query(),
+        ];
+
+        return collect($buckets)->map(function ($query, string $type) use ($schoolIds): array {
+            $rows = $query
+                ->when($schoolIds !== null, fn ($scoped) => $scoped->whereIn('school_id', $schoolIds))
+                ->selectRaw('status, COUNT(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status');
+
+            return [
+                'type' => $type,
+                'functional' => (int) collect(self::FUNCTIONAL_STATUSES)->sum(fn (string $status): int => (int) $rows->get($status, 0)),
+                'non_functional' => (int) collect(self::NON_FUNCTIONAL_STATUSES)->sum(fn (string $status): int => (int) $rows->get($status, 0)),
+            ];
+        })->values();
+    }
+
+    /**
+     * @param  Collection<int, int>|null  $schoolIds
+     * @return array{districts: array<int, string>, resourceTypes: array<int, string>, values: array<int, array<int, int>>}
+     */
+    private function districtResourceHeatmap(?Collection $schoolIds): array
+    {
+        $districts = District::query()
+            ->when($schoolIds !== null, fn ($query) => $query->whereHas('schools', fn ($schoolQuery) => $schoolQuery->whereIn('id', $schoolIds)))
+            ->orderBy('name')
+            ->get();
+
+        $printed = $this->sumByDistrict(LearningResource::class, 'learning_resources', $schoolIds, quantityColumn: 'learning_resources.quantity_delivered');
+        $ict = $this->countByDistrict(IctEquipment::class, 'ict_equipment', $schoolIds);
+        $sme = $this->countByDistrict(Sme::class, 'sme', $schoolIds);
+        $other = $this->countByDistrict(OtherEquipment::class, 'other_equipment', $schoolIds);
+
+        return [
+            'districts' => $districts->pluck('name')->values()->all(),
+            'resourceTypes' => ['Printed Resources', 'ICT Equipment', 'Science & Math', 'Other Equipment'],
+            'values' => $districts->map(fn (District $district): array => [
+                (int) ($printed->get($district->id) ?? 0),
+                (int) ($ict->get($district->id) ?? 0),
+                (int) ($sme->get($district->id) ?? 0),
+                (int) ($other->get($district->id) ?? 0),
+            ])->values()->all(),
+        ];
+    }
+
+    /**
+     * @param  class-string  $modelClass
+     * @param  Collection<int, int>|null  $schoolIds
+     * @return Collection<int, int>
+     */
+    private function countByMunicipality(string $modelClass, string $table, ?Collection $schoolIds): Collection
+    {
+        return $modelClass::query()
+            ->join('schools', 'schools.id', '=', "{$table}.school_id")
+            ->whereNull('schools.deleted_at')
+            ->when($schoolIds !== null, fn ($query) => $query->whereIn("{$table}.school_id", $schoolIds))
+            ->selectRaw('schools.municipality_id, COUNT(*) as total')
+            ->groupBy('schools.municipality_id')
+            ->pluck('total', 'schools.municipality_id');
+    }
+
+    /**
+     * @param  class-string  $modelClass
+     * @param  Collection<int, int>|null  $schoolIds
+     * @return Collection<int, int>
+     */
+    private function countByDistrict(string $modelClass, string $table, ?Collection $schoolIds): Collection
+    {
+        return $modelClass::query()
+            ->join('schools', 'schools.id', '=', "{$table}.school_id")
+            ->whereNull('schools.deleted_at')
+            ->when($schoolIds !== null, fn ($query) => $query->whereIn("{$table}.school_id", $schoolIds))
+            ->selectRaw('schools.district_id, COUNT(*) as total')
+            ->groupBy('schools.district_id')
+            ->pluck('total', 'schools.district_id');
+    }
+
+    /**
+     * @param  class-string  $modelClass
+     * @param  Collection<int, int>|null  $schoolIds
+     * @return Collection<int, int>
+     */
+    private function sumByDistrict(string $modelClass, string $table, ?Collection $schoolIds, string $quantityColumn): Collection
+    {
+        return $modelClass::query()
+            ->join('schools', 'schools.id', '=', "{$table}.school_id")
+            ->whereNull('schools.deleted_at')
+            ->when($schoolIds !== null, fn ($query) => $query->whereIn("{$table}.school_id", $schoolIds))
+            ->selectRaw("schools.district_id, COALESCE(SUM({$quantityColumn}), 0) as total")
+            ->groupBy('schools.district_id')
+            ->pluck('total', 'schools.district_id');
+    }
+
+    /**
+     * @param  class-string  $modelClass
+     * @param  Collection<int, int>|null  $schoolIds
+     * @param  (callable(Builder): void)  $constraint
+     * @return Collection<int, int>
+     */
+    private function sumByMunicipality(string $modelClass, string $table, ?Collection $schoolIds, callable $constraint, string $quantityColumn): Collection
+    {
+        return tap($modelClass::query()
+            ->join('schools', 'schools.id', '=', "{$table}.school_id")
+            ->whereNull('schools.deleted_at')
+            ->when($schoolIds !== null, fn ($query) => $query->whereIn("{$table}.school_id", $schoolIds)), $constraint)
+            ->selectRaw("schools.municipality_id, COALESCE(SUM({$quantityColumn}), 0) as total")
+            ->groupBy('schools.municipality_id')
+            ->pluck('total', 'schools.municipality_id');
     }
 }

@@ -1,5 +1,12 @@
 import { Head } from '@inertiajs/react';
-import { BookOpen, Boxes, CalendarRange, GraduationCap, Percent, Truck } from 'lucide-react';
+import {
+    BookOpen,
+    Boxes,
+    CalendarRange,
+    GraduationCap,
+    Percent,
+    Truck,
+} from 'lucide-react';
 import { ChartCard } from '@/components/charts/chart-card';
 import { DivergingStackedBar } from '@/components/charts/diverging-stacked-bar';
 import { EmptyChart } from '@/components/charts/empty-chart';
@@ -38,10 +45,21 @@ type Props = {
         total_distributions: number;
     };
     enrollmentByGrade: Array<{ grade: string; male: number; female: number }>;
-    equipmentCondition: Array<{ type: string; good: number; fair: number; needs_attention: number }>;
+    equipmentCondition: Array<{
+        type: string;
+        good: number;
+        fair: number;
+        needs_attention: number;
+    }>;
 };
 
-export default function SchoolDashboard({ school, activeSchoolYear, stats, enrollmentByGrade, equipmentCondition }: Props) {
+export default function SchoolDashboard({
+    school,
+    activeSchoolYear,
+    stats,
+    enrollmentByGrade,
+    equipmentCondition,
+}: Props) {
     const schoolData = ('data' in school ? school.data : school) as School;
     const municipalityBarangay = `${schoolData.municipality ?? '-'} - ${schoolData.barangay ?? '-'}`;
 
@@ -51,9 +69,15 @@ export default function SchoolDashboard({ school, activeSchoolYear, stats, enrol
         { label: 'Municipality/Barangay', value: municipalityBarangay },
         { label: 'District', value: schoolData.district ?? '-' },
         { label: 'Librarian', value: schoolData.librarian ?? '-' },
-        { label: 'Property Custodian', value: schoolData.property_custodian ?? '-' },
+        {
+            label: 'Property Custodian',
+            value: schoolData.property_custodian ?? '-',
+        },
         { label: 'Primary Mobile', value: schoolData.primary_mobile_no ?? '-' },
-        { label: 'Secondary Mobile', value: schoolData.secondary_mobile_no ?? '-' },
+        {
+            label: 'Secondary Mobile',
+            value: schoolData.secondary_mobile_no ?? '-',
+        },
     ];
 
     return (
@@ -63,7 +87,9 @@ export default function SchoolDashboard({ school, activeSchoolYear, stats, enrol
             <div className="space-y-4 bg-background/40 p-3 md:p-4">
                 <section className="rounded-2xl border border-input bg-background p-4 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h1 className="text-xl font-bold text-foreground">{schoolData.school_name} - {schoolData.school_id}</h1>
+                        <h1 className="text-xl font-bold text-foreground">
+                            {schoolData.school_name} - {schoolData.school_id}
+                        </h1>
                         {activeSchoolYear && (
                             <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-foreground">
                                 <CalendarRange className="size-3.5 text-muted-foreground" />
@@ -76,20 +102,28 @@ export default function SchoolDashboard({ school, activeSchoolYear, stats, enrol
                             <tbody>
                                 {schoolDetails.map((item, index) => {
                                     if (index % 2 === 0) {
-                                        const nextItem = schoolDetails[index + 1];
+                                        const nextItem =
+                                            schoolDetails[index + 1];
 
                                         return (
-                                            <tr key={`row-${index}`} className="border-b border-border">
+                                            <tr
+                                                key={`row-${index}`}
+                                                className="border-b border-border"
+                                            >
                                                 <td className="w-1/4 py-1.5 pr-3 font-semibold text-foreground">
                                                     {item.label}
                                                 </td>
-                                                <td className="w-1/4 py-1.5 pr-6 text-foreground">{item.value}</td>
+                                                <td className="w-1/4 py-1.5 pr-6 text-foreground">
+                                                    {item.value}
+                                                </td>
                                                 {nextItem && (
                                                     <>
                                                         <td className="w-1/4 py-1.5 pr-3 font-semibold text-foreground">
                                                             {nextItem.label}
                                                         </td>
-                                                        <td className="w-1/4 py-1.5 text-foreground">{nextItem.value}</td>
+                                                        <td className="w-1/4 py-1.5 text-foreground">
+                                                            {nextItem.value}
+                                                        </td>
                                                     </>
                                                 )}
                                             </tr>
@@ -148,22 +182,40 @@ export default function SchoolDashboard({ school, activeSchoolYear, stats, enrol
                 <section className="grid gap-3 lg:grid-cols-2">
                     <ChartCard
                         title="Enrollment by Grade Level"
-                        subtitle={activeSchoolYear ? `Learners encoded for SY ${activeSchoolYear.name}` : 'No active school year set'}
+                        subtitle={
+                            activeSchoolYear
+                                ? `Learners encoded for SY ${activeSchoolYear.name}`
+                                : 'No active school year set'
+                        }
                         legend={[
                             { label: 'Male', color: 'var(--viz-series-1)' },
                             { label: 'Female', color: 'var(--viz-series-2)' },
                         ]}
                         table={{
                             headers: ['Grade level', 'Male', 'Female', 'Total'],
-                            rows: enrollmentByGrade.map((row) => [row.grade, row.male, row.female, row.male + row.female]),
+                            rows: enrollmentByGrade.map((row) => [
+                                row.grade,
+                                row.male,
+                                row.female,
+                                row.male + row.female,
+                            ]),
                         }}
                     >
                         {enrollmentByGrade.length > 0 ? (
                             <GroupedColumnChart
-                                data={enrollmentByGrade.map((row) => ({ label: row.grade, values: [row.male, row.female] }))}
+                                data={enrollmentByGrade.map((row) => ({
+                                    label: row.grade,
+                                    values: [row.male, row.female],
+                                }))}
                                 series={[
-                                    { name: 'Male', color: 'var(--viz-series-1)' },
-                                    { name: 'Female', color: 'var(--viz-series-2)' },
+                                    {
+                                        name: 'Male',
+                                        color: 'var(--viz-series-1)',
+                                    },
+                                    {
+                                        name: 'Female',
+                                        color: 'var(--viz-series-2)',
+                                    },
                                 ]}
                             />
                         ) : (
@@ -175,12 +227,21 @@ export default function SchoolDashboard({ school, activeSchoolYear, stats, enrol
                         title="Equipment Condition"
                         subtitle="Serviceable units to the right, units needing repair to the left"
                         legend={[
-                            { label: 'Needs attention', color: 'var(--viz-bad)' },
+                            {
+                                label: 'Needs attention',
+                                color: 'var(--viz-bad)',
+                            },
                             { label: 'Fair', color: 'var(--viz-neutral)' },
                             { label: 'Good', color: 'var(--viz-series-1)' },
                         ]}
                         table={{
-                            headers: ['Equipment', 'Good', 'Fair', 'Needs attention', 'Total'],
+                            headers: [
+                                'Equipment',
+                                'Good',
+                                'Fair',
+                                'Needs attention',
+                                'Total',
+                            ],
                             rows: equipmentCondition.map((row) => [
                                 row.type,
                                 row.good,
@@ -190,7 +251,10 @@ export default function SchoolDashboard({ school, activeSchoolYear, stats, enrol
                             ]),
                         }}
                     >
-                        {equipmentCondition.some((row) => row.good + row.fair + row.needs_attention > 0) ? (
+                        {equipmentCondition.some(
+                            (row) =>
+                                row.good + row.fair + row.needs_attention > 0,
+                        ) ? (
                             <DivergingStackedBar
                                 rows={equipmentCondition.map((row) => ({
                                     label: row.type,
