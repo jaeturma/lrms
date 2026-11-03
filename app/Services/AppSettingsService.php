@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Crypt;
 
 class AppSettingsService
 {
+    public const DEFAULT_APP_TITLE = 'iLRMS - Integrated Learning Resource Management System';
+
     /**
      * Color theme presets defined in resources/css/app.css.
      *
@@ -60,7 +62,7 @@ class AppSettingsService
         return [
             'login_title' => $values->get('login_title') ?: 'Log in to your account',
             'login_logo_url' => $values->get('login_logo_url'),
-            'app_title' => $values->get('app_title') ?: config('app.name', 'LRMS'),
+            'app_title' => $values->get('app_title') ?: self::DEFAULT_APP_TITLE,
             'app_logo_url' => $values->get('app_logo_url'),
             'website_logo_url' => $values->get('website_logo_url'),
             'color_theme' => array_key_exists((string) $values->get('color_theme'), self::COLOR_THEMES)

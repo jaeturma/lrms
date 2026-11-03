@@ -153,14 +153,14 @@ export default function AdminValidLr({
 
     return (
         <>
-            <Head title="VALID-LR Monitoring" />
+            <Head title="LR Monitoring" />
 
             <main className="bg-background/40 p-3 md:p-4">
                 <div className="space-y-4">
                     <PageHeader
                         icon={ClipboardCheck}
                         iconClassName="bg-teal-100 text-teal-600 dark:bg-teal-900/60 dark:text-teal-300"
-                        title="VALID-LR Monitoring"
+                        title="LR Monitoring"
                         description="Validation and inventory of delivered learning resources, SME and TVL packages. Enter a School ID to load its allocation, LRMIS, SME and TVL records, then record a monitoring visit."
                         actions={
                             <>

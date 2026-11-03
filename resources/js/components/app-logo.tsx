@@ -12,6 +12,11 @@ export default function AppLogo() {
     const { branding } = usePage<{ branding?: Branding }>().props;
     const [logoFailed, setLogoFailed] = useState(false);
     const logoUrl = resolveBrandingImageUrl(branding?.app_logo_url);
+    // "iLRMS - Integrated ..." shows as a short name with the rest underneath.
+    const [appName, ...taglineParts] = (branding?.app_title || 'iLRMS').split(
+        ' - ',
+    );
+    const tagline = taglineParts.join(' - ');
 
     return (
         <div className="flex min-w-0 items-center gap-2">
@@ -29,8 +34,16 @@ export default function AppLogo() {
             </div>
             <div className="ml-1 grid flex-1 min-w-0 text-left text-sm">
                 <span className="mb-0.5 truncate leading-tight font-semibold">
-                    {branding?.app_title || 'LRMS'}
+                    {appName}
                 </span>
+                {tagline && (
+                    <span
+                        className="truncate text-[10px] leading-tight text-muted-foreground"
+                        title={tagline}
+                    >
+                        {tagline}
+                    </span>
+                )}
             </div>
         </div>
     );

@@ -165,3 +165,10 @@ test('seeded admin and staff accounts use the default password', function () {
         expect(Hash::check('Pass1234!', User::query()->where('email', $email)->sole()->password))->toBeTrue();
     }
 });
+
+test('branding defaults to the iLRMS title', function () {
+    $this->actingAs(User::factory()->admin()->create())
+        ->get(route('admin.dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('branding.app_title', 'iLRMS - Integrated Learning Resource Management System'));
+});

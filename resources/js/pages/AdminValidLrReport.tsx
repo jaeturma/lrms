@@ -113,14 +113,14 @@ export default function AdminValidLrReport({
 
     return (
         <>
-            <Head title="VALID-LR Monitoring Report" />
+            <Head title="LR Monitoring Report" />
 
             <main className="bg-background/40 p-3 md:p-4">
                 <div className="space-y-4">
                     <PageHeader
                         icon={FileBarChart}
                         iconClassName="bg-teal-100 text-teal-600 dark:bg-teal-900/60 dark:text-teal-300"
-                        title="VALID-LR Monitoring Report"
+                        title="LR Monitoring Report"
                         description={`Coverage, indicator answers, delivery status and count discrepancies from monitoring visits${division ? ` in ${division}` : ''}.`}
                         actions={
                             <>

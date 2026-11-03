@@ -47,7 +47,7 @@ export default function AdminValidLrReportPrint({
 
     return (
         <PrintPage
-            title="VALID-LR Monitoring Report"
+            title="LR Monitoring Report"
             backHref="/app/admin/valid-lr/report"
             backLabel="Back to report"
         >

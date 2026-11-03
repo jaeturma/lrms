@@ -923,3 +923,33 @@ test('lr managers, ito, superadmin and system admin can correct lrmis counts on 
 
     expect($science->refresh()->lrmis_quantity)->toBe(845);
 });
+
+test('main dashboard summarizes LR monitoring progress', function () {
+    seedValidLrReferenceData();
+    ValidLrSchool::factory()->create(['district' => 'Other District']);
+    ['user' => $user] = validLrSchoolAccount();
+    $this->actingAs($user)->get(route('school.valid-lr.index'));
+
+    $visit = ValidLrVisit::query()->sole();
+    $visit->update(['validation_started_at' => now()]);
+    $science = $visit->items()->where('section', 'lr')->where('lrmis_quantity', 832)->sole();
+    $science->update(['actual_quantity' => 800]);
+    $matching = $visit->items()->where('section', 'lr')->whereKeyNot($science->id)->whereNotNull('lrmis_quantity')->first();
+    $matching?->update(['actual_quantity' => $matching->lrmis_quantity]);
+
+    $this->actingAs(User::factory()->create(['role' => 'sds']))
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('AdminDashboard')
+            ->where('lrMonitoring.schools', 2)
+            ->where('lrMonitoring.not_started', 1)
+            ->where('lrMonitoring.schools_completed', 0)
+            ->where('lrMonitoring.stages.2.stage', 'validating')
+            ->where('lrMonitoring.stages.2.count', 1)
+            ->where('lrMonitoring.items_with_discrepancy', 1)
+            ->has('lrMonitoring.districts', 2)
+            ->has('lrMonitoring.ongoing', 1)
+            ->where('lrMonitoring.ongoing.0.id', $visit->id)
+            ->where('lrMonitoring.ongoing.0.beis_school_id', '304205'));
+});

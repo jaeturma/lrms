@@ -15,6 +15,10 @@ use App\Models\ResourceDistribution;
 use App\Models\School;
 use App\Models\SchoolYear;
 use App\Models\Sme;
+use App\Models\ValidLrSchool;
+use App\Models\ValidLrVisit;
+use App\Models\ValidLrVisitItem;
+use App\Services\ValidLrPreparationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -36,7 +40,7 @@ class AdminDashboardController extends Controller
     /**
      * Handle the incoming request.
      */
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, ValidLrPreparationService $preparationService): Response
     {
         $search = $request->string('search')->toString();
         $districtId = $request->integer('district_id');
@@ -89,6 +93,7 @@ class AdminDashboardController extends Controller
             'smeLabAdequacy' => $this->smeLabAdequacyByMunicipality($schoolIds),
             'equipmentFunctionalStatus' => $this->equipmentFunctionalStatus($schoolIds),
             'districtResourceHeatmap' => $this->districtResourceHeatmap($schoolIds),
+            'lrMonitoring' => $this->lrMonitoring($preparationService),
             'activeSchoolYear' => $activeSchoolYear?->only(['id', 'name']),
             'districts' => District::query()->orderBy('name')->get(['id', 'name']),
             'schoolTypes' => School::SCHOOL_TYPES,
@@ -413,6 +418,79 @@ class AdminDashboardController extends Controller
                 (int) ($sme->get($district->id) ?? 0),
                 (int) ($other->get($district->id) ?? 0),
             ])->values()->all(),
+        ];
+    }
+
+    /**
+     * Division-wide LR Monitoring (VALID-LR) progress: visit stages, coverage
+     * by district, count accuracy and the validations happening now.
+     *
+     * @return array<string, mixed>
+     */
+    private function lrMonitoring(ValidLrPreparationService $preparationService): array
+    {
+        $completedSchoolIds = ValidLrVisit::query()->where('status', 'completed')->distinct()->pluck('valid_lr_school_id');
+        $monitoredSchoolIds = ValidLrVisit::query()->distinct()->pluck('valid_lr_school_id');
+
+        $districts = ValidLrSchool::query()
+            ->get(['id', 'district'])
+            ->groupBy(fn (ValidLrSchool $school): string => $school->district ?: 'Unassigned')
+            ->map(fn (Collection $schools, string $district): array => [
+                'district' => $district,
+                'schools' => $schools->count(),
+                'monitored' => $schools->pluck('id')->intersect($monitoredSchoolIds)->count(),
+                'completed' => $schools->pluck('id')->intersect($completedSchoolIds)->count(),
+            ])
+            ->sortKeys()
+            ->values();
+
+        $accuracy = ValidLrVisitItem::query()
+            ->whereIn('section', ValidLrVisit::COUNTED_SECTIONS)
+            ->whereNotNull('actual_quantity')
+            ->selectRaw('count(*) as validated')
+            ->selectRaw('sum(case when (case when section = ? then lrmis_quantity else reference_quantity end) is not null and actual_quantity <> (case when section = ? then lrmis_quantity else reference_quantity end) then 1 else 0 end) as discrepancies', [
+                ValidLrVisitItem::SECTION_LEARNING_RESOURCES,
+                ValidLrVisitItem::SECTION_LEARNING_RESOURCES,
+            ])
+            ->first();
+
+        $ongoingVisits = ValidLrVisit::query()
+            ->inStage(ValidLrVisit::STAGE_VALIDATING)
+            ->with(['validLrSchool:id,beis_school_id,school_name,district', 'teamLeader:id,name'])
+            ->latest('updated_at')
+            ->limit(5)
+            ->get();
+        $progress = $preparationService->progress($ongoingVisits->pluck('id'));
+
+        return [
+            'schools' => ValidLrSchool::query()->count(),
+            'schools_monitored' => $monitoredSchoolIds->count(),
+            'schools_completed' => $completedSchoolIds->count(),
+            'not_started' => ValidLrSchool::query()->doesntHave('visits')->count(),
+            'stages' => collect(ValidLrVisit::STAGES)
+                ->map(fn (string $label, string $stage): array => [
+                    'stage' => $stage,
+                    'label' => $label,
+                    'count' => ValidLrVisit::query()->inStage($stage)->count(),
+                ])
+                ->values(),
+            'districts' => $districts,
+            'items_validated' => (int) ($accuracy->validated ?? 0),
+            'items_with_discrepancy' => (int) ($accuracy->discrepancies ?? 0),
+            'ongoing' => $ongoingVisits->map(function (ValidLrVisit $visit) use ($progress): array {
+                $counts = $progress->get($visit->id, ['items_total' => 0, 'validated' => 0]);
+
+                return [
+                    'id' => $visit->id,
+                    'school_name' => $visit->validLrSchool->school_name,
+                    'beis_school_id' => $visit->validLrSchool->beis_school_id,
+                    'district' => $visit->validLrSchool->district,
+                    'team_leader' => $visit->teamLeader?->name,
+                    'items_total' => $counts['items_total'],
+                    'validated' => $counts['validated'],
+                    'updated_at' => $visit->updated_at?->diffForHumans(),
+                ];
+            })->values(),
         ];
     }
 

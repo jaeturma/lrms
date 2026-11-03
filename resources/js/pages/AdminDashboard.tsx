@@ -5,6 +5,7 @@ import {
     Boxes,
     Building2,
     CalendarRange,
+    ClipboardCheck,
     ClipboardList,
     GraduationCap,
     LayoutGrid,
@@ -43,6 +44,42 @@ type SchoolRow = {
 type Paginator<T> = {
     data: T[];
     links: Array<{ url: string | null; label: string; active: boolean }>;
+};
+
+type LrMonitoring = {
+    schools: number;
+    schools_monitored: number;
+    schools_completed: number;
+    not_started: number;
+    stages: Array<{ stage: string; label: string; count: number }>;
+    districts: Array<{
+        district: string;
+        schools: number;
+        monitored: number;
+        completed: number;
+    }>;
+    items_validated: number;
+    items_with_discrepancy: number;
+    ongoing: Array<{
+        id: number;
+        school_name: string;
+        beis_school_id: string;
+        district: string | null;
+        team_leader: string | null;
+        items_total: number;
+        validated: number;
+        updated_at: string | null;
+    }>;
+};
+
+const lrStageTone: Record<string, string> = {
+    awaiting_school:
+        'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200',
+    ready: 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-200',
+    validating:
+        'bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-200',
+    completed:
+        'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200',
 };
 
 type Props = {
@@ -108,6 +145,7 @@ type Props = {
         resourceTypes: string[];
         values: number[][];
     };
+    lrMonitoring: LrMonitoring;
     activeSchoolYear: { id: number; name: string } | null;
     districts: District[];
     schoolTypes: string[];
@@ -132,6 +170,7 @@ export default function AdminDashboard({
     smeLabAdequacy,
     equipmentFunctionalStatus,
     districtResourceHeatmap,
+    lrMonitoring,
     activeSchoolYear,
     districts,
     schoolTypes,
@@ -237,7 +276,7 @@ export default function AdminDashboard({
             <Head title="Admin Dashboard" />
 
             <div className="space-y-4 bg-background/40 p-3 md:p-4">
-                <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <header className="flex flex-wrap items-center justify-between gap-3 px-1">
                     <div className="flex items-center gap-3">
                         <PageHeaderIcon
                             icon={LayoutGrid}
@@ -245,7 +284,7 @@ export default function AdminDashboard({
                         />
                         <div>
                             <h1 className="text-xl font-bold text-foreground">
-                                Division Dashboard
+                                iLRMS Dashboard
                             </h1>
                             <p className="text-sm text-muted-foreground">
                                 {scopeLabel} · learning resources, equipment,
@@ -261,7 +300,7 @@ export default function AdminDashboard({
                     )}
                 </header>
 
-                <section className="rounded-2xl border border-border bg-card p-3 shadow-sm">
+                <section className="px-1">
                     <form
                         method="get"
                         action="/app/admin/dashboard"
@@ -376,6 +415,147 @@ export default function AdminDashboard({
                         icon={Truck}
                         colorClassName="bg-lime-100 text-lime-700 dark:bg-lime-950/60 dark:text-lime-200"
                     />
+                </section>
+
+                <section className="space-y-3">
+                    <div className="flex flex-wrap items-end justify-between gap-2 px-1">
+                        <div>
+                            <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                                <ClipboardCheck className="size-4 text-teal-600" />
+                                LR Monitoring
+                            </h2>
+                            <p className="text-xs text-muted-foreground">
+                                Division-wide validation of learning resources ·{' '}
+                                {lrMonitoring.schools_completed.toLocaleString()}{' '}
+                                of {lrMonitoring.schools.toLocaleString()}{' '}
+                                schools completed
+                            </p>
+                        </div>
+                        <div className="flex gap-3 text-sm">
+                            <Link
+                                href="/app/admin/valid-lr/board"
+                                className="text-primary underline underline-offset-4"
+                            >
+                                Live board
+                            </Link>
+                            <Link
+                                href="/app/admin/valid-lr/report"
+                                className="text-primary underline underline-offset-4"
+                            >
+                                Report
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                        <article className="rounded-xl bg-muted p-3 text-foreground shadow-sm">
+                            <p className="text-xs font-medium tracking-wide uppercase opacity-80">
+                                Not started
+                            </p>
+                            <p className="mt-1 text-2xl font-bold">
+                                {lrMonitoring.not_started.toLocaleString()}
+                            </p>
+                            <p className="mt-0.5 text-xs opacity-75">
+                                Schools without a visit yet
+                            </p>
+                        </article>
+                        {lrMonitoring.stages.map((stage) => (
+                            <article
+                                key={stage.stage}
+                                className={`rounded-xl p-3 shadow-sm ${lrStageTone[stage.stage] ?? 'bg-muted text-foreground'}`}
+                            >
+                                <p className="text-xs font-medium tracking-wide uppercase opacity-80">
+                                    {stage.label}
+                                </p>
+                                <p className="mt-1 text-2xl font-bold">
+                                    {stage.count.toLocaleString()}
+                                </p>
+                                <p className="mt-0.5 text-xs opacity-75">
+                                    {stage.count === 1 ? 'visit' : 'visits'}
+                                </p>
+                            </article>
+                        ))}
+                    </div>
+
+                    <div className="grid gap-3 lg:grid-cols-2">
+                        <ChartCard
+                            title="Validation Coverage by District"
+                            subtitle="Schools with a completed validation against schools in the monitoring list"
+                            table={{
+                                headers: [
+                                    'District',
+                                    'Schools',
+                                    'Monitored',
+                                    'Completed',
+                                ],
+                                rows: lrMonitoring.districts.map((row) => [
+                                    row.district,
+                                    row.schools,
+                                    row.monitored,
+                                    row.completed,
+                                ]),
+                            }}
+                        >
+                            {lrMonitoring.districts.length > 0 ? (
+                                <div className="max-h-72 overflow-y-auto pr-1">
+                                    <HProgressBars
+                                        rows={lrMonitoring.districts.map(
+                                            (row) => ({
+                                                label: row.district,
+                                                value: row.completed,
+                                                max: row.schools,
+                                                valueText: `${row.completed.toLocaleString()}/${row.schools.toLocaleString()}`,
+                                            }),
+                                        )}
+                                    />
+                                </div>
+                            ) : (
+                                <EmptyChart message="No schools imported into LR Monitoring yet." />
+                            )}
+                        </ChartCard>
+
+                        <ChartCard
+                            title="Validation Ongoing"
+                            subtitle={`${lrMonitoring.items_validated.toLocaleString()} items counted · ${lrMonitoring.items_with_discrepancy.toLocaleString()} differ from LRMIS or the package quantity`}
+                        >
+                            {lrMonitoring.ongoing.length > 0 ? (
+                                <ul className="divide-y divide-border">
+                                    {lrMonitoring.ongoing.map((visit) => (
+                                        <li key={visit.id} className="py-2">
+                                            <Link
+                                                href={`/app/admin/valid-lr/visits/${visit.id}/edit`}
+                                                className="flex items-center justify-between gap-3 hover:underline"
+                                            >
+                                                <span className="min-w-0">
+                                                    <span className="block truncate text-sm font-medium text-foreground">
+                                                        {visit.school_name}
+                                                    </span>
+                                                    <span className="block truncate text-xs text-muted-foreground">
+                                                        {visit.beis_school_id}
+                                                        {visit.district
+                                                            ? ` · ${visit.district}`
+                                                            : ''}
+                                                        {visit.team_leader
+                                                            ? ` · Leader: ${visit.team_leader}`
+                                                            : ''}
+                                                    </span>
+                                                </span>
+                                                <span className="shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                                                    {visit.validated}/
+                                                    {visit.items_total} items
+                                                    <span className="block">
+                                                        {visit.updated_at}
+                                                    </span>
+                                                </span>
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <EmptyChart message="No validation is in progress right now." />
+                            )}
+                        </ChartCard>
+                    </div>
                 </section>
 
                 <section className="grid gap-3 lg:grid-cols-2">
