@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file. Format follows 
 
 This is the first entry in this file — there is no prior tagged release to diff against, so `v0.8.0` documents the audited baseline state of the codebase as verified against routes, controllers, models, migrations, services, seeders, tests, and Inertia pages. See [`.ai/07-modules.md`](.ai/07-modules.md) for full per-module detail and [`.ai/08-roadmap.md`](.ai/08-roadmap.md) for forward-looking status.
 
+## [v0.9.1] - 2026-11-03
+
+### Added
+
+- **Production data seeders** — the development database's master and reference data, snapshotted to JSON in `database/seeders/data/`, so `php artisan db:seed` (or `--class=...`) on production loads the same data:
+  - `DivisionLocationSeeder` — all 11 municipalities, 18 districts and 237 barangays; existing rows are kept.
+  - `DivisionSchoolSeeder` — the 416 division schools with profile/personnel fields, linked to their municipality, district and barangay by name. Schools already present (by school ID) are never overwritten; seeded schools start unlinked to any user and not activated.
+  - `ValidLrReferenceSeeder` — VALID-LR reference data: 419 BEIS schools, allocations, LRMIS counts, TVL programs, regional titles (upserted on their natural keys), and the SME/TVL masterlists (seeded only while empty, so a later workbook import is never clobbered). Monitoring visits are not seeded.
+  - Shared `Database\Seeders\Concerns\ReadsSeedData` trait for reading the snapshot files.
+
+### Changed
+
+- `DatabaseSeeder` now calls `DivisionLocationSeeder`, `DivisionSchoolSeeder` and `ValidLrReferenceSeeder` in place of the sample `LocationSeeder` and `SchoolSeeder` (both kept for tests and local demos). User accounts, app settings and catalogs keep their existing seeders.
+
 ## [v0.9.0] - 2026-11-02
 
 ### Added

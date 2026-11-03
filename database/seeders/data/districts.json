@@ -1,0 +1,23 @@
+{
+  "columns": ["municipality","name"],
+  "rows": [
+    ["Compostela","Compostela East"],
+    ["Compostela","Compostela West"],
+    ["Laak","Laak North"],
+    ["Laak","Laak South"],
+    ["Mabini","Mabini"],
+    ["Maco","Maco North"],
+    ["Maco","Maco South"],
+    ["Maragusan","Maragusan East"],
+    ["Maragusan","Maragusan West"],
+    ["Mawab","Mawab"],
+    ["Monkayo","Monkayo East"],
+    ["Monkayo","Monkayo West"],
+    ["Montevista","Montevista"],
+    ["Nabunturan","Nabunturan East"],
+    ["Nabunturan","Nabunturan West"],
+    ["New Bataan","New Bataan"],
+    ["Pantukan","Pantukan North"],
+    ["Pantukan","Pantukan South"]
+  ]
+}

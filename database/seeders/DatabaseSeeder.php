@@ -21,8 +21,9 @@ class DatabaseSeeder extends Seeder
             SmeCatalogSeeder::class,
             GradeLevelSeeder::class,
             SchoolYearSeeder::class,
-            LocationSeeder::class,
-            SchoolSeeder::class,
+            DivisionLocationSeeder::class,
+            DivisionSchoolSeeder::class,
+            ValidLrReferenceSeeder::class,
         ]);
     }
 }
