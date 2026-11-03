@@ -158,11 +158,15 @@ test('a school can upload and remove its logo', function () {
         ->assertForbidden();
 });
 
-test('seeded admin and staff accounts use the default password', function () {
+test('seeded admin and staff accounts use the configured initial passwords', function () {
+    config(['auth.initial_admin.password' => 'Configured-Admin-1', 'auth.initial_staff_password' => 'Configured-Staff-1']);
+
     $this->seed([AdminUserSeeder::class, RoleUserSeeder::class]);
 
-    foreach (['admin@lrms.com', 'manager@lrms.com', 'sysadmin@lrms.com', 'superadmin@lrms.com', 'ito@lrms.com'] as $email) {
-        expect(Hash::check('Pass1234!', User::query()->where('email', $email)->sole()->password))->toBeTrue();
+    expect(Hash::check('Configured-Admin-1', User::query()->where('email', 'admin@lrms.com')->sole()->password))->toBeTrue();
+
+    foreach (['manager@lrms.com', 'sysadmin@lrms.com', 'superadmin@lrms.com', 'ito@lrms.com'] as $email) {
+        expect(Hash::check('Configured-Staff-1', User::query()->where('email', $email)->sole()->password))->toBeTrue();
     }
 });
 

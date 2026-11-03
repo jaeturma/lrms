@@ -16,6 +16,8 @@ This is the first entry in this file — there is no prior tagged release to dif
 
 ### Changed
 
+- **`AdminUserSeeder` hardened for production** — no hardcoded password. The initial administrator is created from `ADMIN_NAME`, `ADMIN_EMAIL` (default `admin@lrms.com`) and `ADMIN_PASSWORD` (new `auth.initial_admin` config; no default password), validated against `Password::defaults()` (strict in production). It uses `firstOrCreate`, so re-seeding never resets an existing administrator's password or profile (previously `updateOrCreate` reset it to `Pass1234!`). When the account is new and the credentials are missing or invalid, it is skipped with a warning (other seeders still run); the password is never printed or logged. **Set `ADMIN_PASSWORD` before seeding a fresh database**, or no admin account is created.
+- **`RoleUserSeeder` hardened the same way** — the nine staff role accounts get their initial password from `STAFF_PASSWORD` (new `auth.initial_staff_password` config; no default) instead of the hardcoded `Pass1234!`, validated against `Password::defaults()`. Only missing accounts are created (`firstOrCreate`); existing accounts' passwords and profiles are never reset. If accounts are missing and the password is missing or invalid, none are created and seeding continues with a warning. **Set `STAFF_PASSWORD` before seeding a fresh database**, and have staff change it after first login.
 - `DatabaseSeeder` now calls `DivisionLocationSeeder`, `DivisionSchoolSeeder` and `ValidLrReferenceSeeder` in place of the sample `LocationSeeder` and `SchoolSeeder` (both kept for tests and local demos). User accounts, app settings and catalogs keep their existing seeders.
 
 ## [v0.9.0] - 2026-11-02

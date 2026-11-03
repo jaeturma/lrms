@@ -114,4 +114,35 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Initial Administrator
+    |--------------------------------------------------------------------------
+    |
+    | Credentials AdminUserSeeder uses to create the first administrator
+    | account. They are only read when no account with this email exists;
+    | an existing administrator is never changed. There is deliberately no
+    | default password: without ADMIN_PASSWORD the account is not created.
+    |
+    */
+
+    'initial_admin' => [
+        'name' => env('ADMIN_NAME', 'System Administrator'),
+        'email' => env('ADMIN_EMAIL', 'admin@lrms.com'),
+        'password' => env('ADMIN_PASSWORD'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Initial Staff Password
+    |--------------------------------------------------------------------------
+    |
+    | Initial password RoleUserSeeder gives each staff role account it
+    | creates. Existing accounts are never changed. There is deliberately no
+    | default: without STAFF_PASSWORD no staff account is created.
+    |
+    */
+
+    'initial_staff_password' => env('STAFF_PASSWORD'),
+
 ];

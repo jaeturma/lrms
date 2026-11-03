@@ -103,15 +103,11 @@ php artisan migrate:fresh    # drop everything and re-run (destructive)
 php artisan db:seed          # populate reference/demo data
 ```
 
-`DatabaseSeeder` runs, in order: `AdminUserSeeder`, `RoleUserSeeder`, `LearningResourceTypeSeeder`, `DigitalLearningMaterialSeeder`, `IctEquipmentCatalogSeeder`, `OtherEquipmentCatalogSeeder`, `SmeCatalogSeeder`, `GradeLevelSeeder`, `SchoolYearSeeder`, `LocationSeeder`, `SchoolSeeder`.
+`DatabaseSeeder` runs, in order: `AdminUserSeeder`, `RoleUserSeeder`, `LearningResourceTypeSeeder`, `DigitalLearningMaterialSeeder`, `IctEquipmentCatalogSeeder`, `OtherEquipmentCatalogSeeder`, `SmeCatalogSeeder`, `GradeLevelSeeder`, `SchoolYearSeeder`, `DivisionLocationSeeder`, `DivisionSchoolSeeder`, `ValidLrReferenceSeeder`.
 
-This creates, among other things, a default admin login:
+`AdminUserSeeder` creates the initial `admin` account from `ADMIN_NAME`, `ADMIN_EMAIL` (default `admin@lrms.com`) and `ADMIN_PASSWORD` (no default; must satisfy `Password::defaults()`, which is strict in production). If the account already exists it is left untouched; if it is new and the credentials are missing or invalid, it is skipped with a warning and the other seeders still run.
 
-| Email | Password | Role |
-|---|---|---|
-| `admin@lrms.com` | `password` | `admin` |
-
-`RoleUserSeeder` additionally seeds one demo account per staff role (`manager@lrms.com`, `librarian@lrms.com`, `supply@lrms.com`, `cidchief@lrms.com`, `asds@lrms.com`, `sds@lrms.com`, `ito@lrms.com`, `sysadmin@lrms.com`, `superadmin@lrms.com`), all with password `Pass1234`.
+`RoleUserSeeder` additionally seeds one demo account per staff role (`manager@lrms.com`, `librarian@lrms.com`, `supply@lrms.com`, `cidchief@lrms.com`, `asds@lrms.com`, `sds@lrms.com`, `ito@lrms.com`, `sysadmin@lrms.com`, `superadmin@lrms.com`), all with the initial password from `STAFF_PASSWORD` (no default; same rules and same never-overwrite / skip-with-warning behavior as `AdminUserSeeder`).
 
 **Change or remove these credentials before deploying anywhere but local development.**
 
